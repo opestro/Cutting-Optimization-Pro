@@ -26,11 +26,25 @@ def clean_data(data):
     data_cleaned['Long.'] = data_cleaned['Long.'].astype(int)
     return data_cleaned
 
-def optimize_cutting(data, stock_length):
+def load_settings(settings_path):
+    settings = pd.read_excel(settings_path, engine='odf', skiprows=2)
+    settings.columns = ['Profile', 'Stock Length']
+    settings_cleaned = settings.dropna(subset=['Profile', 'Stock Length'])
+    settings_cleaned['Stock Length'] = settings_cleaned['Stock Length'].astype(int)
+    return settings_cleaned
+
+def get_stock_length(profile, settings, default_length):
+    length_row = settings[settings['Profile'] == profile]
+    if not length_row.empty:
+        return length_row['Stock Length'].values[0]
+    return default_length
+
+def optimize_cutting(data, settings, default_length):
     results = []
     
     for profile, group in data.groupby('Profil'):
         pieces = []
+        stock_length = get_stock_length(profile, settings, default_length)
         
         for _, row in group.iterrows():
             pieces.extend([row['Long.']] * row['Qté'])
@@ -97,10 +111,11 @@ def export_to_excel(results, output_path, image_path):
     
     writer._save()
 
-def main(file_path, output_path, image_path, stock_length):
-    data = load_data(file_path)
+def main(work_file_path, settings_file_path, output_path, image_path, default_length):
+    data = load_data(work_file_path)
     data_cleaned = clean_data(data)
-    results = optimize_cutting(data_cleaned, stock_length)
+    settings = load_settings(settings_file_path)
+    results = optimize_cutting(data_cleaned, settings, default_length)
     draw_cutting_plan(results, image_path)
     export_to_excel(results, output_path, image_path)
     
@@ -110,8 +125,10 @@ def main(file_path, output_path, image_path, stock_length):
         print(f"Profile {profile} requires {total_stock_used} pieces of {stock_length} mm stock length. Total length saved: {total_length_saved} mm.")
 
 # Example usage
-file_path = 'list.xlsx'
+work_file_path = 'list.xlsx'
+settings_file_path = 'settings.ods'
 output_path = 'optimized_cutting_plan.xlsx'
 image_path = 'cutting_plan.png'
-stock_length = 12000
-main(file_path, output_path, image_path, stock_length)
+default_length = 12000
+
+main(work_file_path, settings_file_path, output_path, image_path, default_length)

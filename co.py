@@ -110,7 +110,7 @@ def main(file_path, output_path, image_path, stock_length):
         print(f"Profile {profile} requires {total_stock_used} pieces of {stock_length} mm stock length. Total length saved: {total_length_saved} mm.")
 
 # Example usage
-file_path = 'A_liste appro.xlsx'
+file_path = 'list.xlsx'
 output_path = 'optimized_cutting_plan.xlsx'
 image_path = 'cutting_plan.png'
 stock_length = 12000

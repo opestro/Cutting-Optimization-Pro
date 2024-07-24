@@ -38,12 +38,12 @@ Arabic:
 ## 🛠️ Usage / Utilisation / الاستخدام
 
 1. **Prepare the working file and settings file / Préparez le fichier de travail et le fichier de paramètres / قم بإعداد ملف العمل وملف الإعدادات:**
-   - Ensure the working file (`A_liste appro[2].xlsx`) contains the profiles and their quantities.
+   - Ensure the working file (`list.xlsx`) contains the profiles and their quantities.
    - Ensure the settings file (`settings.ods`) contains the default stock lengths for profiles.
 
 2. **Run the optimization / Exécutez l'optimisation / قم بتشغيل التحسين:**
    ```bash
-   python main.py
+   python co.py
    ```
 
 3. **Check the output / Vérifiez la sortie / تحقق من المخرجات:**
@@ -52,17 +52,15 @@ Arabic:
 
 ## 📁 Files / Fichiers / الملفات
 
-- `main.py`: Main script to run the optimization.
-- `cuttingOptimization.py`: Contains the functions for data loading, cleaning, optimization, and visualization.
-- `requirements.txt`: List of required packages.
-- `A_liste appro[2].xlsx`: Example working file.
+- `co.py`: Main script to run the optimization.
+- `list.xlsx`: Example working file.
 - `settings.ods`: Example settings file.
 
 ## 📝 Example / Exemple / مثال
 
 Here is an example command to run the optimization:
 ```bash
-python main.py
+python oc.py
 ```
 
 ## 📜 License / Licence / الترخيص

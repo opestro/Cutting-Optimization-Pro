@@ -3,6 +3,10 @@
 
 This is a Python tool to optimize the cutting of profiles based on given stock lengths. It uses the provided settings and working files to calculate the optimized cutting plans and visualize the results.
 
+FR : C'est un outil Python pour optimiser la découpe des profils en fonction des longueurs de stock données. Il utilise les paramètres et les fichiers de travail fournis pour calculer les plans de découpe optimisés et visualiser les résultats.
+Arabic:
+هذه أداة بايثون لتحسين قطع الملفات الشخصية بناءً على أطوال المخزون المحددة. يستخدم الإعدادات والملفات العمل المقدمة لحساب خطط القطع المحسّنة وتصور النتائج.
+
 ## 📦 Installation / Installation / التثبيت
 
 1. **Clone the repository / Cloner le dépôt / استنساخ المستودع:**

@@ -1,68 +1,176 @@
+# 🚀 Cutting Optimizer Pro
 
-# 🔧 Cutting Optimization Tool 🛠️
+<div align="center">
 
-This is a Python tool to optimize the cutting of profiles based on given stock lengths. It uses the provided settings and working files to calculate the optimized cutting plans and visualize the results.
+![Cutting Optimizer Pro Logo](icons/app.png)
 
-FR : C'est un outil Python pour optimiser la découpe des profils en fonction des longueurs de stock données. Il utilise les paramètres et les fichiers de travail fournis pour calculer les plans de découpe optimisés et visualiser les résultats.
+A professional-grade cutting optimization software for industrial applications.
 
-Arabic:
-هذه أداة بايثون لتحسين قطع الملفات الشخصية بناءً على أطوال المخزون المحددة. يستخدم الإعدادات والملفات العمل المقدمة لحساب خطط القطع المحسّنة وتصور النتائج.
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Qt](https://img.shields.io/badge/Qt-5.15+-green.svg)](https://www.qt.io/)
 
-## 📦 Installation / Installation / التثبيت
+[English](#english) | [Français](#français) | [العربية](#عربية)
 
-1. **Clone the repository / Cloner le dépôt / استنساخ المستودع:**
-   ```bash
-   git clone <repository_url>
-   cd <repository_directory>
-   ```
+</div>
 
-2. **Create a virtual environment / Créer un environnement virtuel / إنشاء بيئة افتراضية:**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows use `venv\Scripts\activate`
-   ```
+---
 
-3. **Install the required packages / Installer les packages requis / تثبيت الحزم المطلوبة:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+## 🌟 Features
 
-## 📚 Required Packages / Packages Requis / الحزم المطلوبة
+- 📊 Advanced cutting optimization algorithm
+- 🎯 Minimizes material waste
+- 💾 Excel import/export support
+- 📈 Visual cutting plans
+- 🌍 Multi-language support (English, French, Arabic)
+- 🎨 Modern dark theme interface
+- 📱 Real-time optimization feedback
+- 🔄 Dynamic profile management
 
-- pandas
-- matplotlib
-- xlsxwriter
-- xlrd
-- openpyxl
+## 🖥️ Screenshots
 
-## 🛠️ Usage / Utilisation / الاستخدام
+<div align="center">
+<img src="screenshots/main.png" width="45%" />
+<img src="screenshots/optimization.png" width="45%" />
+</div>
 
-1. **Prepare the working file and settings file / Préparez le fichier de travail et le fichier de paramètres / قم بإعداد ملف العمل وملف الإعدادات:**
-   - Ensure the working file (`list.xlsx`) contains the profiles and their quantities.
-   - Ensure the settings file (`settings.ods`) contains the default stock lengths for profiles.
+---
 
-2. **Run the optimization / Exécutez l'optimisation / قم بتشغيل التحسين:**
-   ```bash
-   python co.py
-   ```
+<a name="english"></a>
+## 📦 Installation
 
-3. **Check the output / Vérifiez la sortie / تحقق من المخرجات:**
-   - The optimized cutting plan will be saved as an Excel file (`optimized_cutting_plan_xlsx.xlsx`).
-   - The cutting plan visualization will be saved as an image (`cutting_plan_xlsx.png`).
+### Prerequisites
+- Python 3.8 or higher
+- Git (for cloning)
 
-## 📁 Files / Fichiers / الملفات
-
-- `co.py`: Main script to run the optimization.
-- `list.xlsx`: Example working file.
-- `settings.ods`: Example settings file.
-
-## 📝 Example / Exemple / مثال
-
-Here is an example command to run the optimization:
+### Quick Start
 ```bash
-python oc.py
+# Clone the repository
+git clone https://github.com/yourusername/cutting-optimizer-pro.git
+
+# Navigate to directory
+cd cutting-optimizer-pro
+
+# Create virtual environment
+python -m venv venv
+
+# Activate virtual environment
+# On Windows:
+venv\Scripts\activate
+# On Unix or MacOS:
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run the application
+python gui.py
 ```
 
-## 📜 License / Licence / الترخيص
+### Dependencies
+```
+pandas>=1.3.0
+PyQt5>=5.15.0
+matplotlib>=3.4.0
+xlsxwriter>=3.0.0
+openpyxl>=3.0.0
+```
 
-This project is licensed under the MIT License.
+---
+
+<a name="français"></a>
+## 🇫🇷 Installation (Français)
+
+### Prérequis
+- Python 3.8 ou supérieur
+- Git (pour le clonage)
+
+### Démarrage Rapide
+```bash
+# Cloner le dépôt
+git clone https://github.com/yourusername/cutting-optimizer-pro.git
+
+# Naviguer vers le répertoire
+cd cutting-optimizer-pro
+
+# Créer l'environnement virtuel
+python -m venv venv
+
+# Activer l'environnement virtuel
+source venv/bin/activate  # Sur Unix/MacOS
+venv\Scripts\activate     # Sur Windows
+
+# Installer les dépendances
+pip install -r requirements.txt
+
+# Lancer l'application
+python gui.py
+```
+
+---
+
+<a name="عربية"></a>
+## 🇸🇦 التثبيت (عربي)
+
+### المتطلبات الأساسية
+- بايثون 3.8 أو أحدث
+- Git (للاستنساخ)
+
+### البدء السريع
+```bash
+# استنساخ المستودع
+git clone https://github.com/yourusername/cutting-optimizer-pro.git
+
+# الانتقال إلى المجلد
+cd cutting-optimizer-pro
+
+# إنشاء البيئة الافتراضية
+python -m venv venv
+
+# تفعيل البيئة الافتراضية
+source venv/bin/activate  # على Unix/MacOS
+venv\Scripts\activate     # على Windows
+
+# تثبيت المتطلبات
+pip install -r requirements.txt
+
+# تشغيل التطبيق
+python gui.py
+```
+
+---
+
+## 🛠️ Usage
+
+1. Launch the application
+2. Select or import your cutting profiles
+3. Set quantities and stock lengths
+4. Click "Run Optimization"
+5. View results and export reports
+
+## 📊 Technical Details
+
+- **Algorithm**: Advanced first-fit decreasing algorithm
+- **Optimization**: Multi-parameter optimization for minimal waste
+- **Output Formats**: Excel (.xlsx), Images (.png)
+- **Interface**: Qt-based modern GUI
+- **Performance**: Optimized for large datasets
+
+## 👨‍💻 Developer
+
+**Mehdi Harzallah**
+- 📱 WhatsApp: +213 778191078
+- 📧 Email: [contact@example.com](mailto:contact@example.com)
+- 🌐 Website: [www.example.com](https://www.example.com)
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+<div align="center">
+
+Made with ❤️ by Mehdi Harzallah
+
+</div>

@@ -4,71 +4,72 @@ import os
 import xlsxwriter
 
 def load_data(file_path):
-    file_extension = os.path.splitext(file_path)[1].lower()
-    if file_extension == '.ods':
-        data = pd.read_excel(file_path, engine='odf')
-    elif file_extension == '.xlsx' or file_extension == '.xls':
-        data = pd.read_excel(file_path)
-    else:
-        raise ValueError("Unsupported file format. Please provide an ODS or Excel file.")
-    return data
+    """Load data from Excel files"""
+    try:
+        data = pd.read_excel(file_path, engine='openpyxl')
+        return data
+    except Exception as e:
+        raise Exception(f"Error loading file {file_path}: {str(e)}")
 
 def clean_data(data):
-    # Skip rows until the header is found
-    data = data.iloc[2:]
-    data.columns = data.iloc[0]
-    data = data[1:]
-    
-    # Extract relevant columns and remove rows with NaN values in 'Profil', 'Qté', or 'Long.'
-    data_cleaned = data[['Profil', 'Qté', 'Long.']].dropna(subset=['Profil', 'Qté', 'Long.'])
-    data_cleaned = data_cleaned[~data_cleaned['Profil'].str.contains('Total')]
-    data_cleaned['Qté'] = data_cleaned['Qté'].astype(int)
-    data_cleaned['Long.'] = data_cleaned['Long.'].astype(int)
-    return data_cleaned
+    """Clean and prepare the data"""
+    try:
+        # Extract relevant columns and remove rows with NaN values
+        data_cleaned = data[['Profil', 'Qté', 'Long.']].dropna(subset=['Profil', 'Qté', 'Long.'])
+        data_cleaned = data_cleaned[~data_cleaned['Profil'].str.contains('Total', na=False)]
+        
+        # Convert to proper types
+        data_cleaned['Qté'] = pd.to_numeric(data_cleaned['Qté'], errors='coerce').fillna(1).astype(int)
+        data_cleaned['Long.'] = pd.to_numeric(data_cleaned['Long.'], errors='coerce').fillna(0).astype(int)
+        
+        return data_cleaned
+    except Exception as e:
+        raise Exception(f"Error cleaning data: {str(e)}")
 
-def load_settings(settings_path):
-    settings = pd.read_excel(settings_path, engine='odf', skiprows=2)
-    settings.columns = ['Profile', 'Stock Length']
-    settings_cleaned = settings.dropna(subset=['Profile', 'Stock Length'])
-    settings_cleaned['Stock Length'] = settings_cleaned['Stock Length'].astype(int)
-    return settings_cleaned
-
-def get_stock_length(profile, settings, default_length):
-    length_row = settings[settings['Profile'] == profile]
+def get_stock_length(profile, settings_df, default_length):
+    """Get stock length for a profile from settings DataFrame"""
+    length_row = settings_df[settings_df['Profile'] == profile]
     if not length_row.empty:
-        return length_row['Stock Length'].values[0]
+        return length_row['Stock Length'].iloc[0]
     return default_length
 
-def optimize_cutting(data, settings, default_length):
+def optimize_cutting(data, settings_df, default_length):
     results = []
     
-    for profile, group in data.groupby('Profil'):
+    # Process each unique profile
+    for profile in settings_df['Profile'].unique():
+        # Get stock length for this profile
+        stock_length = settings_df[settings_df['Profile'] == profile]['Stock Length'].iloc[0]
+        
+        # Get all pieces for this profile
+        profile_data = data[data['Profil'] == profile]
+        
         pieces = []
-        stock_length = get_stock_length(profile, settings, default_length)
+        if not profile_data.empty:
+            # Collect all pieces with their quantities
+            for _, row in profile_data.iterrows():
+                pieces.extend([int(row['Long.'])] * int(row['Qté']))
         
-        for _, row in group.iterrows():
-            pieces.extend([row['Long.']] * row['Qté'])
-        
-        # Sort pieces in descending order
-        pieces.sort(reverse=True)
-        
-        stock_used = []
-        current_stock = stock_length
-        current_pieces = []
+        if pieces:  # Only process if we have pieces to cut
+            pieces.sort(reverse=True)  # Sort pieces in descending order
+            stock_used = []
+            current_stock = stock_length
+            current_pieces = []
 
-        for piece in pieces:
-            if piece <= current_stock:
-                current_pieces.append(piece)
-                current_stock -= piece
-            else:
+            for piece in pieces:
+                if piece <= current_stock:
+                    current_pieces.append(piece)
+                    current_stock -= piece
+                else:
+                    if current_pieces:
+                        stock_used.append((current_pieces, stock_length - current_stock))
+                    current_pieces = [piece]
+                    current_stock = stock_length - piece
+
+            if current_pieces:
                 stock_used.append((current_pieces, stock_length - current_stock))
-                current_pieces = [piece]
-                current_stock = stock_length - piece
-
-        if current_pieces:
-            stock_used.append((current_pieces, stock_length - current_stock))
-        
-        results.append((profile, stock_length, stock_used))
+            
+            results.append((profile, stock_length, stock_used))
     
     return results
 
@@ -93,42 +94,88 @@ def draw_cutting_plan(results, save_path):
     plt.savefig(save_path)
     plt.close()
 
-def export_to_excel(results, output_path, image_path):
+def export_to_excel(results, output_path, image_path, language="en"):
+    # Translation dictionary
+    translations = {
+        "en": {
+            "Profile": "Profile",
+            "Stock Length": "Stock Length",
+            "Cut Index": "Cut Index",
+            "Pieces Cut": "Pieces Cut",
+            "Total Length Used": "Total Length Used",
+            "Remaining Length": "Remaining Length",
+            "Cutting Plan": "Cutting Plan"
+        },
+        "fr": {
+            "Profile": "Profil",
+            "Stock Length": "Longueur Stock",
+            "Cut Index": "Index Coupe",
+            "Pieces Cut": "Pièces Coupées",
+            "Total Length Used": "Longueur Totale Utilisée",
+            "Remaining Length": "Longueur Restante",
+            "Cutting Plan": "Plan de Découpe"
+        }
+    }
+    
+    t = translations[language]
+    
     data_to_export = []
     for profile, stock_length, stock_used in results:
-        for j, (pieces, total_used) in enumerate(stock_used):
-            data_to_export.append([profile, stock_length, j+1, pieces, total_used, stock_length - total_used])
+        for j, (pieces, remaining) in enumerate(stock_used):
+            data_to_export.append({
+                t["Profile"]: profile,
+                t["Stock Length"]: stock_length,
+                t["Cut Index"]: j+1,
+                t["Pieces Cut"]: pieces,
+                t["Total Length Used"]: sum(pieces),
+                t["Remaining Length"]: remaining
+            })
     
-    df = pd.DataFrame(data_to_export, columns=['Profile', 'Stock Length', 'Cut Index', 'Pieces Cut', 'Total Length Used', 'Remaining Length'])
+    df = pd.DataFrame(data_to_export)
     
     writer = pd.ExcelWriter(output_path, engine='xlsxwriter')
-    df.to_excel(writer, sheet_name='Cutting Plan', index=False)
+    df.to_excel(writer, sheet_name=t["Cutting Plan"], index=False)
     
-    workbook  = writer.book
-    worksheet = writer.sheets['Cutting Plan']
-    
+    workbook = writer.book
+    worksheet = writer.sheets[t["Cutting Plan"]]
     worksheet.insert_image('H2', image_path)
-    
     writer._save()
 
-def main(work_file_path, settings_file_path, output_path, image_path, default_length):
-    data = load_data(work_file_path)
-    data_cleaned = clean_data(data)
-    settings = load_settings(settings_file_path)
-    results = optimize_cutting(data_cleaned, settings, default_length)
-    draw_cutting_plan(results, image_path)
-    export_to_excel(results, output_path, image_path)
-    
+def calculate_waste_percentage(results):
+    """Calculate waste percentage for each profile"""
+    waste_stats = {}
     for profile, stock_length, stock_used in results:
-        total_stock_used = len(stock_used)
-        total_length_saved = stock_length * total_stock_used - sum(data_cleaned[data_cleaned['Profil'] == profile]['Long.'] * data_cleaned[data_cleaned['Profil'] == profile]['Qté'])
-        print(f"Profile {profile} requires {total_stock_used} pieces of {stock_length} mm stock length. Total length saved: {total_length_saved} mm.")
+        total_stock = len(stock_used) * stock_length
+        used_length = sum(sum(pieces) for pieces, _ in stock_used)
+        waste_percentage = ((total_stock - used_length) / total_stock) * 100
+        waste_stats[profile] = {
+            'waste_percentage': round(waste_percentage, 2),
+            'total_stock': total_stock,
+            'used_length': used_length
+        }
+    return waste_stats
 
-# Example usage
-work_file_path = 'list.xlsx'
-settings_file_path = 'settings.ods'
-output_path = 'optimized_cutting_plan.xlsx'
-image_path = 'cutting_plan.png'
-default_length = 12000
-
-main(work_file_path, settings_file_path, output_path, image_path, default_length)
+def main(data, settings_df, output_path, image_path, default_length):
+    """Main function to run the optimization"""
+    try:
+        # If data is already a DataFrame, use it directly
+        if isinstance(data, pd.DataFrame):
+            data_cleaned = data
+        else:
+            # If it's a file path, load and clean the data
+            data = load_data(data)
+            data_cleaned = clean_data(data)
+        
+        # Run optimization
+        results = optimize_cutting(data_cleaned, settings_df, default_length)
+        
+        # Generate outputs
+        if results:  # Only generate outputs if we have results
+            draw_cutting_plan(results, image_path)
+            export_to_excel(results, output_path, image_path)
+            
+            # Calculate and return waste statistics
+            return calculate_waste_percentage(results)
+        
+    except Exception as e:
+        raise Exception(f"Error in optimization process: {str(e)}")

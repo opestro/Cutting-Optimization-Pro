@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Cutting Optimizer Pro Logo](icons/app.png)
+![Cutting Optimizer Pro Logo](icons/dark/app.png)
 
 A professional-grade cutting optimization software for industrial applications.
 
@@ -15,6 +15,16 @@ A professional-grade cutting optimization software for industrial applications.
 </div>
 
 ---
+
+## Description
+Cutting Optimizer Pro is a powerful tool that minimizes material waste and optimizes cutting patterns for metal profiles. Built with Python and PyQt5, it offers an intuitive interface for efficient material planning and cost reduction.
+
+🛠️ Ideal for:
+• Steel profiles
+• Metal beams
+• Construction materials
+• Workshop planning
+• Material cost reduction
 
 ## 🌟 Features
 
@@ -162,8 +172,8 @@ python gui.py
 
 **Mehdi Harzallah**
 - 📱 WhatsApp: +213 778191078
-- 📧 Email: [contact@example.com](mailto:mahdiharzallah21@gmail.com)
-- 🌐 Website: [www.example.com](https://nestgit.com)
+- 📧 Email: [mahdiharzallah21@gmail.com](mailto:mahdiharzallah21@gmail.com)
+- 🌐 Website: [nestgit.com](https://nestgit.com)
 
 ## 📄 License
 

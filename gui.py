@@ -259,29 +259,44 @@ class DebugWindow(QDialog):
 class UpdateChecker:
     def __init__(self):
         try:
-            with open('version.json', 'r') as f:
-                version_data = json.load(f)
-                self.current_version = version_data['version']
-        except FileNotFoundError:
-            logger.warning("version.json not found, creating default version file")
-            # Create default version file if it doesn't exist
-            self.current_version = "1.0.0"
-            default_version_data = {
-                "version": self.current_version,
-                "min_required": "1.0.0"
-            }
-            try:
-                with open('version.json', 'w') as f:
-                    json.dump(default_version_data, f, indent=4)
-            except Exception as e:
-                logger.error(f"Failed to create version.json: {str(e)}")
+            # Get the directory where the executable/script is located
+            if getattr(sys, 'frozen', False):
+                # If running as compiled executable
+                application_path = os.path.dirname(sys.executable)
+            else:
+                # If running as script
+                application_path = os.path.dirname(os.path.abspath(__file__))
+            
+            version_file = os.path.join(application_path, 'version.json')
+            
+            if os.path.exists(version_file):
+                with open(version_file, 'r') as f:
+                    version_data = json.load(f)
+                    self.current_version = version_data['version']
+                    self.min_required = version_data['min_required']
+                    logger.info(f"Loaded version: {self.current_version} (min required: {self.min_required})")
+            else:
+                logger.warning("version.json not found, creating default version file")
+                self.current_version = "1.1.1"
+                self.min_required = "1.1.1"
+                default_version_data = {
+                    "version": self.current_version,
+                    "min_required": self.min_required
+                }
+                try:
+                    with open(version_file, 'w') as f:
+                        json.dump(default_version_data, f, indent=4)
+                    logger.info(f"Created default version.json with version {self.current_version}")
+                except Exception as e:
+                    logger.error(f"Failed to create version.json: {str(e)}")
         except Exception as e:
             logger.error(f"Error reading version.json: {str(e)}")
-            self.current_version = "1.0.0"  # Set default version if there's any error
+            self.current_version = "1.1.1"  # Fallback version
+            self.min_required = "1.1.1"
         
         # Update with your GitHub username and repo
-        self.github_api_url = "https://api.github.com/repos/MehdiHarzallah/Cutting-Optimization-Pro/releases/latest"
-        self.update_url = "https://github.com/MehdiHarzallah/Cutting-Optimization-Pro/releases/latest"
+        self.github_api_url = "https://api.github.com/repos/opestro/Cutting-Optimization-Pro/releases/latest"
+        self.update_url = "https://github.com/opestro/Cutting-Optimization-Pro/releases/latest"
 
     def check_for_updates(self):
         try:

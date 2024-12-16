@@ -1,9 +1,9 @@
-name: Create Release
+name: Build and Release
 
 on:
   push:
     tags:
-      - 'v*' # Triggers on version tags
+      - 'v*'
 
 jobs:
   build:
@@ -23,31 +23,19 @@ jobs:
         pip install -r requirements.txt
         pip install pyinstaller
     
-    - name: Build executable
+    - name: Build with PyInstaller
       run: |
-        pyinstaller --onefile --windowed --icon=icons/app.ico --name="Cutting-Optimizer-Pro" ^
-        --add-data "icons/*;icons/" ^
-        --add-data "translations.json;." ^
-        --add-data "version.json;." ^
-        gui.py
+        pyinstaller --onefile --windowed --icon=app.ico gui.py
+    
+    - name: Create Release ZIP
+      run: |
+        powershell Compress-Archive -Path "dist/*","version.json","translations.json" -DestinationPath CuttingOptimizerPro.zip
     
     - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          CuttingOptimizerPro.zip
+        body_path: CHANGELOG.md
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
-        draft: false
-        prerelease: false
-    
-    - name: Upload Release Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./dist/Cutting-Optimizer-Pro.exe
-        asset_name: Cutting-Optimizer-Pro.exe
-        asset_content_type: application/octet-stream

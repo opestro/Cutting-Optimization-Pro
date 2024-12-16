@@ -6,7 +6,7 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[('icons/*', 'icons/'), ('translations.json', '.'), ('version.json', '.'), ('co.py', '.')],
-    hiddenimports=[],
+    hiddenimports=['pandas', 'matplotlib', 'openpyxl', 'xlsxwriter'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -35,5 +35,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['icons\\app.png'],
+    icon=['icons\\dark\\app.png'],
 )

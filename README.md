@@ -30,8 +30,10 @@ A professional-grade cutting optimization software for industrial applications.
 ## 🖥️ Screenshots
 
 <div align="center">
-<img src="screenshots/main.png" width="45%" />
-<img src="screenshots/optimization.png" width="45%" />
+<img src="screenshots/image1.png" width="45%" /> <br>
+<img src="screenshots/image.png" width="45%" />
+<img src="screenshots/image2.png" width="45%" />
+
 </div>
 
 ---
@@ -160,8 +162,8 @@ python gui.py
 
 **Mehdi Harzallah**
 - 📱 WhatsApp: +213 778191078
-- 📧 Email: [contact@example.com](mailto:contact@example.com)
-- 🌐 Website: [www.example.com](https://www.example.com)
+- 📧 Email: [contact@example.com](mailto:mahdiharzallah21@gmail.com)
+- 🌐 Website: [www.example.com](https://nestgit.com)
 
 ## 📄 License
 

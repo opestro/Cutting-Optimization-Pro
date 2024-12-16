@@ -22,7 +22,13 @@
         "results_profile": "Profile: {0}",
         "results_used_length": "├── Used Length: {0}mm",
         "results_total_stock": "├── Total Stock: {0}mm",
-        "results_waste": "└── Waste: {0}%"
+        "results_waste": "└── Waste: {0}%",
+        "Check for Updates": "Check for Updates",
+        "Update Available": "Update Available",
+        "A new version is available!": "A new version is available!",
+        "Would you like to download the update?": "Would you like to download the update?",
+        "No Updates": "No Updates",
+        "You are using the latest version.": "You are using the latest version."
     },
     "fr": {
         "app_title": "Optimiseur de Découpe Pro",
@@ -47,7 +53,13 @@
         "results_profile": "Profil: {0}",
         "results_used_length": "├── Longueur utilisée: {0}mm",
         "results_total_stock": "├── Stock total: {0}mm",
-        "results_waste": "└── Perte: {0}%"
+        "results_waste": "└── Perte: {0}%",
+        "Check for Updates": "Vérifier les mises à jour",
+        "Update Available": "Mise à jour disponible",
+        "A new version is available!": "Une nouvelle version est disponible !",
+        "Would you like to download the update?": "Voulez-vous télécharger la mise à jour ?",
+        "No Updates": "Pas de mise à jour",
+        "You are using the latest version.": "Vous utilisez la dernière version."
     },
     "ar": {
         "app_title": "برنامج تحسين القص",
@@ -72,6 +84,12 @@
         "results_profile": "البروفيل: {0}",
         "results_used_length": "├── الطول المستخدم: {0}مم",
         "results_total_stock": "├── إجمالي المخزون: {0}مم",
-        "results_waste": "└── الهدر: {0}٪"
+        "results_waste": "└── الهدر: {0}٪",
+        "Check for Updates": "البحث عن تحديثات",
+        "Update Available": "يتوفر تحديث جديد",
+        "A new version is available!": "يتوفر إصدار جديد!",
+        "Would you like to download the update?": "هل تريد تنزيل التحديث؟",
+        "No Updates": "لا توجد تحديثات",
+        "You are using the latest version.": "أنت تستخدم أحدث إصدار."
     }
 }

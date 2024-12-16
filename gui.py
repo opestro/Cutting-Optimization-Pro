@@ -13,71 +13,161 @@ import co
 import pandas as pd
 import webbrowser
 import os
+import requests
+from packaging import version
+import logging
+import traceback
+from datetime import datetime
+
+# Set up logging at the start of the file
+def setup_logger():
+    """Set up logging configuration"""
+    try:
+        # Create logs directory if it doesn't exist
+        if not os.path.exists('logs'):
+            os.makedirs('logs')
+        
+        # Create log filename with timestamp
+        log_filename = os.path.join('logs', f'debug_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log')
+        
+        # Configure logging
+        logging.basicConfig(
+            level=logging.DEBUG,
+            format='%(asctime)s - %(levelname)s - %(message)s',
+            handlers=[
+                # File handler with UTF-8 encoding
+                logging.FileHandler(log_filename, encoding='utf-8'),
+                # Console handler
+                logging.StreamHandler(sys.stdout)
+            ]
+        )
+        
+        logger = logging.getLogger(__name__)
+        logger.info("=== Application Starting ===")
+        logger.info(f"Python version: {sys.version}")
+        logger.info(f"Operating System: {os.name}")
+        return logger
+        
+    except Exception as e:
+        # If logging setup fails, write to emergency log file
+        with open('emergency_log.txt', 'a') as f:
+            f.write(f"{datetime.now()} - Error setting up logger: {str(e)}\n")
+        raise
+
+logger = setup_logger()
+
+COLORS = {
+    'dark': {
+        'primary': '#0078d4',
+        'background': '#1e1e1e',
+        'surface': '#252526',
+        'border': '#3d3d3d',
+        'text': '#ffffff',
+    },
+    'light': {
+        'primary': '#0078d4',
+        'background': '#f0f0f0',
+        'surface': '#ffffff',
+        'border': '#d0d0d0',
+        'text': '#000000',
+    }
+}
 
 class SplashScreen(QWidget):
     def __init__(self):
-        super().__init__()
-        self.setFixedSize(600, 300)
-        self.setWindowFlag(Qt.FramelessWindowHint)
-        
-        layout = QVBoxLayout()
-        
-        # Title
-        title = QLabel("Cutting Optimizer Pro")
-        title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet("""
-            QLabel {
-                color: #2c3e50;
-                font-size: 24px;
-                font-weight: bold;
-            }
-        """)
-        
-        # Progress Bar
-        self.progress = QProgressBar()
-        self.progress.setStyleSheet("""
-            QProgressBar {
-                border: 2px solid #2c3e50;
-                border-radius: 5px;
-                text-align: center;
-            }
-            QProgressBar::chunk {
-                background-color: #3498db;
-            }
-        """)
-        
-        # Developer Info
-        dev_info = QLabel("Developed with ❤️ by Mehdi Harzallah")
-        dev_info.setAlignment(Qt.AlignCenter)
-        dev_info.setStyleSheet("color: #7f8c8d;")
-        
-        contact = QLabel("Contact: +213 778191078")
-        contact.setAlignment(Qt.AlignCenter)
-        contact.setStyleSheet("color: #7f8c8d;")
-        
-        layout.addStretch()
-        layout.addWidget(title)
-        layout.addWidget(self.progress)
-        layout.addWidget(dev_info)
-        layout.addWidget(contact)
-        layout.addStretch()
-        
-        self.setLayout(layout)
-        
-        # Start progress
-        self.counter = 0
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.progress_update)
-        self.timer.start(30)
-        
+        try:
+            super().__init__()
+            logger.debug("Initializing SplashScreen")
+            
+            self.setFixedSize(600, 300)
+            self.setWindowFlag(Qt.FramelessWindowHint)
+            logger.debug("SplashScreen window properties set")
+            
+            layout = QVBoxLayout()
+            
+            # Title
+            title = QLabel("Cutting Optimizer Pro")
+            title.setAlignment(Qt.AlignCenter)
+            title.setStyleSheet("""
+                QLabel {
+                    color: #2c3e50;
+                    font-size: 24px;
+                    font-weight: bold;
+                }
+            """)
+            
+            # Progress Bar
+            self.progress = QProgressBar()
+            self.progress.setStyleSheet("""
+                QProgressBar {
+                    border: 2px solid #2c3e50;
+                    border-radius: 5px;
+                    text-align: center;
+                }
+                QProgressBar::chunk {
+                    background-color: #3498db;
+                }
+            """)
+            
+            # Developer Info
+            dev_info = QLabel("Developed with ❤️ by Mehdi Harzallah")
+            dev_info.setAlignment(Qt.AlignCenter)
+            dev_info.setStyleSheet("color: #7f8c8d;")
+            
+            contact = QLabel("Contact: +213 778191078")
+            contact.setAlignment(Qt.AlignCenter)
+            contact.setStyleSheet("color: #7f8c8d;")
+            
+            layout.addStretch()
+            layout.addWidget(title)
+            layout.addWidget(self.progress)
+            layout.addWidget(dev_info)
+            layout.addWidget(contact)
+            layout.addStretch()
+            
+            self.setLayout(layout)
+            
+            # Start progress with delay
+            self.counter = 0
+            self.timer = QTimer()
+            self.timer.timeout.connect(self.progress_update)
+            self.timer.start(30)
+            logger.debug("SplashScreen timer started")
+            
+        except Exception as e:
+            logger.error(f"Error in SplashScreen initialization: {str(e)}")
+            logger.error(traceback.format_exc())
+            raise
+
     def progress_update(self):
-        self.progress.setValue(self.counter)
-        if self.counter >= 100:
-            self.timer.stop()
-            self.close()
-            self.main_window = CuttingOptimizerGUI()
-            self.main_window.show()
-        self.counter += 1
+        try:
+            self.progress.setValue(self.counter)
+            logger.debug(f"Progress update: {self.counter}%")
+            
+            if self.counter >= 100:
+                logger.info("Progress reached 100%, creating main window")
+                self.timer.stop()
+                
+                try:
+                    logger.debug("Creating main window")
+                    self.main_window = CuttingOptimizerGUI()
+                    logger.debug("Main window created successfully")
+                    self.main_window.show()
+                    logger.debug("Main window shown")
+                    self.close()
+                    logger.debug("Splash screen closed")
+                    
+                except Exception as e:
+                    logger.error(f"Error creating main window: {str(e)}")
+                    logger.error(traceback.format_exc())
+                    raise
+                    
+            self.counter += 1
+            
+        except Exception as e:
+            logger.error(f"Error in progress update: {str(e)}")
+            logger.error(traceback.format_exc())
+            raise
 
 class DebugWindow(QDialog):
     def __init__(self, parent=None):
@@ -102,7 +192,7 @@ class DebugWindow(QDialog):
                 font-size: 12px;
                 border: 1px solid #3c3f41;
                 border-radius: 4px;
-                padding: 8px;
+                padding: 5px;
             }
         """)
         
@@ -117,7 +207,7 @@ class DebugWindow(QDialog):
                 font-size: 12px;
                 border: 1px solid #3c3f41;
                 border-radius: 4px;
-                padding: 8px;
+                padding: 5px;
             }
         """)
         
@@ -136,7 +226,7 @@ class DebugWindow(QDialog):
                 background-color: #3c3f41;
                 color: white;
                 border: none;
-                padding: 8px 20px;
+                padding: 5px 20px;
                 border-radius: 4px;
                 font-size: 12px;
             }
@@ -166,15 +256,332 @@ class DebugWindow(QDialog):
             QApplication.processEvents()  # Update UI
             QThread.msleep(100)  # Small delay for visual effect
 
+class UpdateChecker:
+    def __init__(self):
+        try:
+            with open('version.json', 'r') as f:
+                version_data = json.load(f)
+                self.current_version = version_data['version']
+        except FileNotFoundError:
+            logger.warning("version.json not found, creating default version file")
+            # Create default version file if it doesn't exist
+            self.current_version = "1.0.0"
+            default_version_data = {
+                "version": self.current_version,
+                "min_required": "1.0.0"
+            }
+            try:
+                with open('version.json', 'w') as f:
+                    json.dump(default_version_data, f, indent=4)
+            except Exception as e:
+                logger.error(f"Failed to create version.json: {str(e)}")
+        except Exception as e:
+            logger.error(f"Error reading version.json: {str(e)}")
+            self.current_version = "1.0.0"  # Set default version if there's any error
+        
+        # Update with your GitHub username and repo
+        self.github_api_url = "https://api.github.com/repos/MehdiHarzallah/Cutting-Optimization-Pro/releases/latest"
+        self.update_url = "https://github.com/MehdiHarzallah/Cutting-Optimization-Pro/releases/latest"
+
+    def check_for_updates(self):
+        try:
+            response = requests.get(self.github_api_url)
+            if response.status_code == 200:
+                latest_version = response.json()["tag_name"].replace("v", "")
+                return version.parse(latest_version) > version.parse(self.current_version)
+        except Exception as e:
+            logger.error(f"Error checking for updates: {e}")
+            return False
+
 class CuttingOptimizerGUI(QMainWindow):
     def __init__(self):
-        super().__init__()
-        self.current_language = "en"  # Default language
-        self.profiles = {}
-        self.load_translations()
-        self.initUI()
+        try:
+            super().__init__()
+            logger.debug("Initializing CuttingOptimizerGUI")
+            self.current_language = "en"
+            self.dark_mode = True  # Default to dark mode
+            self.profiles = {}
+            
+            try:
+                self.update_checker = UpdateChecker()
+            except Exception as e:
+                logger.error(f"Failed to initialize update checker: {str(e)}")
+                # Continue without update checker
+            
+            try:
+                self.load_translations()
+            except Exception as e:
+                logger.error(f"Failed to load translations: {str(e)}")
+                # Set default translations
+                self.translations = {"en": {}}
+            
+            self.initUI()
+            self.apply_theme()
+            
+            # Only check for updates if update_checker was initialized
+            if hasattr(self, 'update_checker'):
+                self.check_for_updates()
+            
+            logger.debug("CuttingOptimizerGUI initialized successfully")
+        except Exception as e:
+            logger.error(f"Error in CuttingOptimizerGUI initialization: {str(e)}")
+            logger.error(traceback.format_exc())
+            raise
+
+    def get_dark_theme(self):
+        return """
+            /* Main Window */
+            QMainWindow {
+                background-color: #1e1e1e;
+            }
+            
+            /* Toolbar */
+            QToolBar {
+                background-color: #2d2d2d;
+                border-bottom: 2px solid #0078d4;
+                spacing: 3px;
+                padding: 3px;
+            }
+            
+            /* Menu Bar */
+            QMenuBar {
+                background-color: #2d2d2d;
+                color: #ffffff;
+            }
+            
+            QMenuBar::item:selected {
+                background-color: #0078d4;
+            }
+            
+            /* Group Boxes */
+            QGroupBox {
+                background-color: #252526;
+                border: 1px solid #3d3d3d;
+                border-radius: 6px;
+                margin-top: 12px;
+                padding: 15px;
+                font-weight: bold;
+            }
+            
+            QGroupBox::title {
+                color: #0078d4;
+                subcontrol-origin: margin;
+                subcontrol-position: top left;
+                padding: 5px 10px;
+                background-color: #252526;
+            }
+            
+            /* Input Fields */
+            QLineEdit, QSpinBox {
+                background-color: #333333;
+                color: #ffffff;
+                border: 1px solid #3d3d3d;
+                border-radius: 4px;
+                padding: 5px;
+                min-height: 16px;
+                font-size: 13px;
+            }
+            
+            QLineEdit:focus, QSpinBox:focus {
+                border: 1px solid #0078d4;
+            }
+            
+            /* Buttons */
+            QPushButton {
+                background-color: #2d2d2d;
+                color: #ffffff;
+                border: 1px solid #3d3d3d;
+                border-radius: 4px;
+                padding: 5px 16px;
+                min-height: 18px;
+                font-size: 13px;
+                font-weight: bold;
+            }
+            
+            QPushButton:hover {
+                background-color: #3d3d3d;
+                border: 1px solid #0078d4;
+            }
+            
+            QPushButton#runButton {
+                background-color: #0078d4;
+                border: none;
+            }
+            
+            QPushButton#runButton:hover {
+                background-color: #1e90ff;
+            }
+            
+            /* Table */
+            QTableWidget {
+                background-color: #252526;
+                alternate-background-color: #2d2d2d;
+                border: 1px solid #3d3d3d;
+                gridline-color: #3d3d3d;
+                color: #ffffff;
+                selection-background-color: #0078d4;
+            }
+            
+            QHeaderView::section {
+                background-color: #2d2d2d;
+                color: #0078d4;
+                padding: 5px;
+                border: none;
+                font-weight: normal;
+            }
+            
+            /* Labels */
+            QLabel {
+                color: #e1e1e1;
+                font-size: 12px;
+            }
+            
+            /* Status Bar */
+            QStatusBar {
+                background-color: #2d2d2d;
+                color: #e1e1e1;
+            }
+        """
+
+    def get_light_theme(self):
+        return """
+            /* Main Window */
+            QMainWindow {
+                background-color: #f0f0f0;
+            }
+            
+            /* Toolbar */
+            QToolBar {
+                background-color: #ffffff;
+                border-bottom: 2px solid #0078d4;
+                spacing: 3px;
+                padding: 3px;
+            }
+            
+            /* Group Boxes */
+            QGroupBox {
+                background-color: #ffffff;
+                border: 1px solid #d0d0d0;
+                border-radius: 6px;
+                margin-top: 12px;
+                padding: 15px;
+                font-weight: bold;
+            }
+            
+            QGroupBox::title {
+                color: #0078d4;
+                background-color: #ffffff;
+            }
+            
+            /* Input Fields */
+            QLineEdit, QSpinBox {
+                background-color: #ffffff;
+                color: #000000;
+                border: 1px solid #d0d0d0;
+                border-radius: 4px;
+                padding: 5px;
+                min-height: 16px;
+                font-size: 13px;
+            }
+            
+            QLineEdit:focus, QSpinBox:focus {
+                border: 1px solid #0078d4;
+            }
+            
+            /* Buttons */
+            QPushButton {
+                background-color: #f5f5f5;
+                color: #000000;
+                border: 1px solid #d0d0d0;
+                border-radius: 4px;
+                padding: 5px 16px;
+                min-height: 18px;
+                font-size: 13px;
+                font-weight: bold;
+            }
+            
+            QPushButton:hover {
+                background-color: #e5e5e5;
+                border: 1px solid #0078d4;
+            }
+            
+            QPushButton#runButton {
+                background-color: #0078d4;
+                color: white;
+                border: none;
+            }
+            
+            /* Table */
+            QTableWidget {
+                background-color: #ffffff;
+                alternate-background-color: #f5f5f5;
+                border: 1px solid #d0d0d0;
+                gridline-color: #d0d0d0;
+                color: #000000;
+            }
+            
+            QHeaderView::section {
+                background-color: #f5f5f5;
+                color: #0078d4;
+                padding: 5px;
+                border: none;
+                font-weight: normal;
+            }
+            
+            /* Labels */
+            QLabel {
+                color: #000000;
+                font-size: 12px;
+            }
+        """
+
+    def apply_theme(self):
+        if self.dark_mode:
+            self.setStyleSheet(self.get_dark_theme())
+        else:
+            self.setStyleSheet(self.get_light_theme())
+
+    def toggle_theme(self):
+        self.dark_mode = not self.dark_mode
+        self.apply_theme()
 
     def initUI(self):
+        # Initialize icons with both dark and light versions
+        self.icons = {
+            'dark': {
+                'app': QIcon('icons/dark/app.png'),
+                'theme': QIcon('icons/dark/theme.png'),
+                'file': QIcon('icons/dark/file.png'),
+                'settings': QIcon('icons/dark/settings.png'),
+                'run': QIcon('icons/dark/run.png'),
+                'export': QIcon('icons/dark/export.png'),
+                'add': QIcon('icons/dark/add.png'),
+                'delete': QIcon('icons/dark/delete.png'),
+                'help': QIcon('icons/dark/help.png'),
+            },
+            'light': {
+                'app': QIcon('icons/light/app.png'),
+                'theme': QIcon('icons/light/theme.png'),
+                'file': QIcon('icons/light/file.png'),
+                'settings': QIcon('icons/light/settings.png'),
+                'run': QIcon('icons/light/run.png'),
+                'export': QIcon('icons/light/export.png'),
+                'add': QIcon('icons/light/add.png'),
+                'delete': QIcon('icons/light/delete.png'),
+                'help': QIcon('icons/light/help.png'),
+            }
+        }
+
+        # Create menu bar
+        menubar = self.menuBar()
+        view_menu = menubar.addMenu(self.tr('View'))
+        
+        # Add theme toggle action
+        theme_action = QAction(QIcon('icons/theme.png'), self.tr('Toggle Theme'), self)
+        theme_action.setShortcut('Ctrl+T')
+        theme_action.triggered.connect(self.toggle_theme)
+        view_menu.addAction(theme_action)
+
         # Create central widget and main layout
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -209,7 +616,7 @@ class CuttingOptimizerGUI(QMainWindow):
         self.default_length_label = QLabel(self.tr('default_length'))
         self.default_length_spin = QSpinBox()
         self.default_length_spin.setRange(1000, 20000)
-        self.default_length_spin.setValue(6000)
+        self.default_length_spin.setValue(12000)
         self.default_length_spin.setSuffix(" mm")
         
         self.kerf_width_label = QLabel(self.tr('kerf_width'))
@@ -584,11 +991,71 @@ class CuttingOptimizerGUI(QMainWindow):
     def tr(self, key):
         return self.translations[self.current_language].get(key, key)
 
+    def get_current_icons(self):
+        return self.icons['dark' if self.dark_mode else 'light']
+
+    def check_for_updates(self):
+        """Check for software updates"""
+        update_available = self.update_checker.check_for_updates()
+        
+        if update_available:
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Information)
+            msg.setWindowTitle(self.tr('Update Available'))
+            msg.setText(self.tr('A new version is available!'))
+            msg.setInformativeText(self.tr('Would you like to download the update?'))
+            msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+            
+            if msg.exec_() == QMessageBox.Yes:
+                webbrowser.open(self.update_checker.update_url)
+        else:
+            # Only show if manually checked (not on startup)
+            if hasattr(self, 'isVisible') and self.isVisible():
+                QMessageBox.information(
+                    self,
+                    self.tr('No Updates'),
+                    self.tr('You are using the latest version.')
+                )
+
+    def auto_check_updates(self):
+        """Automatically check for updates periodically"""
+        self.update_timer = QTimer()
+        self.update_timer.timeout.connect(self.check_for_updates)
+        # Check every 24 hours (in milliseconds)
+        self.update_timer.start(24 * 60 * 60 * 1000)
+
 def main():
-    app = QApplication(sys.argv)
-    splash = SplashScreen()
-    splash.show()
-    sys.exit(app.exec_())
+    try:
+        logger = setup_logger()
+        logger.info("Starting application")
+        
+        app = QApplication(sys.argv)
+        logger.info("QApplication created")
+        
+        try:
+            splash = SplashScreen()
+            logger.info("SplashScreen created")
+            splash.show()
+            logger.info("SplashScreen shown")
+            
+            # Add a small delay to ensure splash screen is visible
+            QTimer.singleShot(100, lambda: logger.info("Splash screen timer triggered"))
+            
+            result = app.exec_()
+            logger.info(f"Application exited with code: {result}")
+            sys.exit(result)
+            
+        except Exception as e:
+            logger.error(f"Error in main application loop: {str(e)}")
+            logger.error(traceback.format_exc())
+            raise
+            
+    except Exception as e:
+        # If logger isn't set up, write to emergency file
+        with open('emergency_log.txt', 'a') as f:
+            f.write(f"{datetime.now()} - Critical error in main: {str(e)}\n")
+            f.write(traceback.format_exc())
+        sys.exit(1)
 
 if __name__ == '__main__':
     main()

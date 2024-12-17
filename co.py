@@ -6,24 +6,83 @@ import xlsxwriter
 def load_data(file_path):
     """Load data from Excel files"""
     try:
+        print(f"\nDEBUG: Loading file: {file_path}")
         data = pd.read_excel(file_path, engine='openpyxl')
+        print("DEBUG: File loaded successfully")
+        print(f"DEBUG: Found {len(data)} rows and {len(data.columns)} columns")
         return data
     except Exception as e:
+        print(f"\nERROR in load_data:")
+        print(f"Error message: {str(e)}")
         raise Exception(f"Error loading file {file_path}: {str(e)}")
 
 def clean_data(data):
     """Clean and prepare the data"""
     try:
-        # Extract relevant columns and remove rows with NaN values
-        data_cleaned = data[['Profil', 'Qté', 'Long.']].dropna(subset=['Profil', 'Qté', 'Long.'])
+        # Debug: Print initial data info
+        print("\nDEBUG: Data Info:")
+        print("Shape:", data.shape)
+        print("Columns:", data.columns.tolist())
+        print("\nFirst few rows:")
+        print(data.head())
+        
+        # Map expected column names (handles both French and English)
+        column_mapping = {
+            'Profil': ['Profil', 'Profile', 'PROFIL'],
+            'Qté': ['Qté', 'Qty', 'Quantité', 'QTE', 'QTÉ'],
+            'Long.': ['Long.', 'Length', 'LONG.'],
+            'Poids': ['Poids', 'Weight', 'POIDS']
+        }
+        
+        # Debug: Print column search process
+        print("\nDEBUG: Searching for columns:")
+        actual_columns = {}
+        for expected, possibilities in column_mapping.items():
+            print(f"\nLooking for {expected} in possibilities: {possibilities}")
+            found = False
+            for col in possibilities:
+                if col in data.columns:
+                    actual_columns[expected] = col
+                    print(f"Found: {col}")
+                    found = True
+                    break
+            if not found:
+                print(f"WARNING: Could not find column {expected}")
+                print(f"Available columns: {data.columns.tolist()}")
+                raise Exception(f"Missing required column {expected}")
+        
+        # Extract and rename columns
+        data_cleaned = data[[
+            actual_columns['Profil'],
+            actual_columns['Qté'],
+            actual_columns['Long.'],
+            actual_columns['Poids']
+        ]].copy()
+        
+        # Rename columns
+        data_cleaned.columns = ['Profil', 'Qté', 'Long.', 'Poids']
+        
+        # Remove rows with NaN values and 'Total' rows
+        data_cleaned = data_cleaned.dropna(subset=['Profil', 'Qté', 'Long.'])
         data_cleaned = data_cleaned[~data_cleaned['Profil'].str.contains('Total', na=False)]
         
         # Convert to proper types
         data_cleaned['Qté'] = pd.to_numeric(data_cleaned['Qté'], errors='coerce').fillna(1).astype(int)
         data_cleaned['Long.'] = pd.to_numeric(data_cleaned['Long.'], errors='coerce').fillna(0).astype(int)
+        data_cleaned['Poids'] = pd.to_numeric(data_cleaned['Poids'], errors='coerce').fillna(0).astype(float)
+        
+        # Calculate Pds Tot
+        data_cleaned['Pds Tot'] = data_cleaned['Qté'] * data_cleaned['Poids']
+        
+        print("\nDEBUG: Final cleaned data with calculated total weight:")
+        print(data_cleaned.head())
         
         return data_cleaned
+        
     except Exception as e:
+        print("\nERROR in clean_data:")
+        print(f"Error message: {str(e)}")
+        print("Full data columns:", data.columns.tolist())
         raise Exception(f"Error cleaning data: {str(e)}")
 
 def get_stock_length(profile, settings_df, default_length):
@@ -155,7 +214,18 @@ def calculate_waste_percentage(results):
         }
     return waste_stats
 
-def main(data, settings_df, output_path, image_path, default_length):
+def calculate_weight_stats(data_df):
+    """Calculate weight statistics for each profile"""
+    weight_stats = {}
+    
+    for profile in data_df['Profil'].unique():
+        profile_data = data_df[data_df['Profil'] == profile]
+        total_weight = profile_data['Pds Tot'].sum()
+        weight_stats[profile] = round(total_weight, 3)
+    
+    return weight_stats
+
+def main(data, settings_df, output_path, image_path, default_length, weight_error=12, steel_price=0):
     """Main function to run the optimization"""
     try:
         # If data is already a DataFrame, use it directly
@@ -175,7 +245,28 @@ def main(data, settings_df, output_path, image_path, default_length):
             export_to_excel(results, output_path, image_path)
             
             # Calculate and return waste statistics
-            return calculate_waste_percentage(results)
+            waste_stats = calculate_waste_percentage(results)
+            
+            # Calculate weight statistics
+            weight_stats = calculate_weight_stats(data_cleaned)
+            
+            # Calculate total weight and price
+            total_weight = sum(weight_stats.values())
+            adjusted_weight = total_weight + (total_weight * (weight_error/100))
+            total_price = adjusted_weight * steel_price
+            
+            # Add weight and price info to stats
+            stats = {
+                'waste': waste_stats,
+                'weight': {
+                    'profiles': {k: round(v, 3) for k, v in weight_stats.items()},
+                    'total': round(total_weight, 3),
+                    'adjusted': round(adjusted_weight, 3),
+                    'price': round(total_price, 3)
+                }
+            }
+            
+            return stats
         
     except Exception as e:
         raise Exception(f"Error in optimization process: {str(e)}")

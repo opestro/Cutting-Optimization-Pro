@@ -6,7 +6,8 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QPushButton, QFileDialog
                            QVBoxLayout, QHBoxLayout, QWidget, QLabel, QSpinBox,
                            QTableWidget, QTableWidgetItem, QHeaderView, QProgressBar,
                            QComboBox, QAction, QToolButton, QMenu, QGroupBox, QLineEdit,
-                           QMessageBox, QTextEdit, QDialog, QSplitter, QPlainTextEdit)
+                           QMessageBox, QTextEdit, QDialog, QSplitter, QPlainTextEdit,
+                           QDoubleSpinBox)
 from PyQt5.QtCore import Qt, QTimer, QSize, QThread
 from PyQt5.QtGui import QColor, QPalette, QFont, QIcon, QPixmap
 import co
@@ -628,22 +629,43 @@ class CuttingOptimizerGUI(QMainWindow):
 
         # Settings section
         settings_layout = QHBoxLayout()
+        
+        # Default length settings
         self.default_length_label = QLabel(self.tr('default_length'))
         self.default_length_spin = QSpinBox()
         self.default_length_spin.setRange(1000, 20000)
         self.default_length_spin.setValue(12000)
         self.default_length_spin.setSuffix(" mm")
         
+        # Kerf width settings
         self.kerf_width_label = QLabel(self.tr('kerf_width'))
         self.kerf_width_spin = QSpinBox()
         self.kerf_width_spin.setRange(1, 100)
         self.kerf_width_spin.setValue(3)
         self.kerf_width_spin.setSuffix(" mm")
         
+        # Weight error margin settings
+        self.weight_error_label = QLabel(self.tr('weight_error_margin'))
+        self.weight_error_spin = QDoubleSpinBox()
+        self.weight_error_spin.setRange(0, 100)
+        self.weight_error_spin.setValue(12)
+        self.weight_error_spin.setSuffix(" %")
+        
+        # Steel price settings
+        self.steel_price_label = QLabel(self.tr('steel_price'))
+        self.steel_price_spin = QDoubleSpinBox()
+        self.steel_price_spin.setRange(0, 10000)
+        self.steel_price_spin.setValue(0)
+        self.steel_price_spin.setSuffix(self.tr('currency_per_kg'))
+        
         settings_layout.addWidget(self.default_length_label)
         settings_layout.addWidget(self.default_length_spin)
         settings_layout.addWidget(self.kerf_width_label)
         settings_layout.addWidget(self.kerf_width_spin)
+        settings_layout.addWidget(self.weight_error_label)
+        settings_layout.addWidget(self.weight_error_spin)
+        settings_layout.addWidget(self.steel_price_label)
+        settings_layout.addWidget(self.steel_price_spin)
         layout.addLayout(settings_layout)
 
         # Profile group
@@ -707,6 +729,9 @@ class CuttingOptimizerGUI(QMainWindow):
         self.profile_group.setTitle(self.tr('profile_lengths'))
         self.default_length_label.setText(self.tr('default_length'))
         self.kerf_width_label.setText(self.tr('kerf_width'))
+        self.weight_error_label.setText(self.tr('weight_error_margin'))
+        self.steel_price_label.setText(self.tr('steel_price'))
+        self.steel_price_spin.setSuffix(self.tr('currency_per_kg'))
         self.profile_name_label.setText(self.tr('profile_name'))
         self.profile_length_label.setText(self.tr('profile_length'))
         self.add_profile_btn.setText(self.tr('add_profile'))
@@ -733,17 +758,25 @@ class CuttingOptimizerGUI(QMainWindow):
             
     def detect_profiles(self, filename):
         try:
+            # Read Excel file, skipping header rows
             data = pd.read_excel(filename, engine='openpyxl')
             data = data.iloc[2:]  # Skip first two rows
             data.columns = data.iloc[0]  # Use the first row as headers
             data = data[1:]  # Skip the header row
             
+            print("DEBUG: Available columns:", data.columns.tolist())
+            
             # Reset profiles
             self.profiles = {}
+            self.original_data = data  # Store the original data for later use
             
             # Convert data types and handle NaN values
             data['Qté'] = pd.to_numeric(data['Qté'], errors='coerce').fillna(1).astype(int)
             data['Long.'] = pd.to_numeric(data['Long.'], errors='coerce').fillna(0).astype(int)
+            data['Poids'] = pd.to_numeric(data['Poids'], errors='coerce').fillna(0).astype(float)
+            
+            # Calculate total weight
+            data['Pds Tot'] = data['Qté'] * data['Poids']
             
             # Group by profile and collect all lengths
             for _, row in data.iterrows():
@@ -753,8 +786,10 @@ class CuttingOptimizerGUI(QMainWindow):
                         self.profiles[profile] = []
                     
                     self.profiles[profile].append({
-                        'length': int(row['Long.']),  # Convert to int
-                        'qty': int(row['Qté'])        # Convert to int
+                        'length': int(row['Long.']),
+                        'qty': int(row['Qté']),
+                        'weight': float(row['Poids']),
+                        'total_weight': float(row['Poids'] * row['Qté'])  # Calculate total weight
                     })
             
             self.update_profile_table()
@@ -762,7 +797,7 @@ class CuttingOptimizerGUI(QMainWindow):
             
         except Exception as e:
             self.status_label.setText(f'Error detecting profiles: {str(e)}')
-            print(f"Error details: {str(e)}")  # For debugging
+            print(f"Error details: {str(e)}")
 
     def update_profile_table(self):
         # Store current values before clearing
@@ -939,41 +974,61 @@ class CuttingOptimizerGUI(QMainWindow):
             settings_df = pd.DataFrame(settings_data)
             debug_window.append_debug("\nCreating optimization data...")
             
-            # Create optimization data
-            optimization_data = []
-            for row in range(self.profile_table.rowCount()):
-                profile_item = self.profile_table.item(row, 0)
-                if profile_item and profile_item.text():
-                    profile = profile_item.text()
-                    length_item = self.profile_table.item(row, 1)
-                    qty_spin = self.profile_table.cellWidget(row, 2)
-                    
-                    if length_item and qty_spin:
-                        optimization_data.append({
-                            'Profil': profile,
-                            'Long.': int(length_item.text()),
-                            'Qté': qty_spin.value()
-                        })
+            # Create optimization data using original data
+            if hasattr(self, 'original_data'):
+                data_df = self.original_data.copy()
+            else:
+                # Create from profile table if original data not available
+                optimization_data = []
+                for row in range(self.profile_table.rowCount()):
+                    profile_item = self.profile_table.item(row, 0)
+                    if profile_item and profile_item.text():
+                        profile = profile_item.text()
+                        length_item = self.profile_table.item(row, 1)
+                        qty_spin = self.profile_table.cellWidget(row, 2)
+                        
+                        if length_item and qty_spin:
+                            optimization_data.append({
+                                'Profil': profile,
+                                'Long.': int(length_item.text()),
+                                'Qté': qty_spin.value(),
+                                'Poids': 0.0,  # Default values if original data not available
+                                'Pds Tot': 0.0
+                            })
+                data_df = pd.DataFrame(optimization_data)
             
-            data_df = pd.DataFrame(optimization_data)
             debug_window.append_debug("\nRunning optimization algorithm...")
             
-            # Run optimization
-            waste_stats = co.main(
+            # Run optimization with weight error margin and steel price
+            stats = co.main(
                 data_df, 
                 settings_df,
                 'optimized_cutting_plan.xlsx',
                 'cutting_plan.png',
-                self.default_length_spin.value()
+                self.default_length_spin.value(),
+                self.weight_error_spin.value(),
+                self.steel_price_spin.value()
             )
             
-            if waste_stats:
+            if stats:
+                # Display optimization results
                 results_text = self.tr('optimization_results') + "\n\n"
-                for profile, stats in waste_stats.items():
+                for profile, waste_stats in stats['waste'].items():
                     results_text += self.tr('results_profile').format(profile) + "\n"
-                    results_text += self.tr('results_used_length').format(stats['used_length']) + "\n"
-                    results_text += self.tr('results_total_stock').format(stats['total_stock']) + "\n"
-                    results_text += self.tr('results_waste').format(stats['waste_percentage']) + "\n\n"
+                    results_text += self.tr('results_used_length').format(waste_stats['used_length']) + "\n"
+                    results_text += self.tr('results_total_stock').format(waste_stats['total_stock']) + "\n"
+                    results_text += self.tr('results_waste').format(waste_stats['waste_percentage']) + "\n\n"
+                
+                # Add weight results
+                results_text += self.tr('weight_results') + "\n\n"
+                results_text += self.tr('results_total_weight').format(stats['weight']['total']) + "\n"
+                results_text += self.tr('results_adjusted_weight').format(
+                    self.weight_error_spin.value(),
+                    stats['weight']['adjusted']
+                ) + "\n"
+                results_text += self.tr('results_total_price').format(
+                    f"{stats['weight']['price']}{self.tr('currency_per_kg').strip()}"
+                ) + "\n\n"
                 
                 debug_window.append_results(results_text)
                 debug_window.append_debug("\nOptimization completed successfully!")
@@ -1038,6 +1093,53 @@ class CuttingOptimizerGUI(QMainWindow):
         self.update_timer.timeout.connect(self.check_for_updates)
         # Check every 24 hours (in milliseconds)
         self.update_timer.start(24 * 60 * 60 * 1000)
+
+    def setup_settings_group(self):
+        settings_group = QGroupBox(self.tr("settings"))
+        layout = QVBoxLayout()
+        
+        # Default length settings
+        default_length_layout = QHBoxLayout()
+        self.default_length_spin = QSpinBox()
+        self.default_length_spin.setRange(1000, 20000)
+        self.default_length_spin.setValue(6000)
+        self.default_length_spin.setSuffix(" mm")
+        default_length_layout.addWidget(QLabel(self.tr("default_length")))
+        default_length_layout.addWidget(self.default_length_spin)
+        
+        # Kerf width settings
+        kerf_layout = QHBoxLayout()
+        self.kerf_width_spin = QDoubleSpinBox()
+        self.kerf_width_spin.setRange(0, 20)
+        self.kerf_width_spin.setValue(3)
+        self.kerf_width_spin.setSuffix(" mm")
+        kerf_layout.addWidget(QLabel(self.tr("kerf_width")))
+        kerf_layout.addWidget(self.kerf_width_spin)
+        
+        # Steel price settings
+        steel_price_layout = QHBoxLayout()
+        self.steel_price_spin = QDoubleSpinBox()
+        self.steel_price_spin.setRange(0, 10000)
+        self.steel_price_spin.setValue(0)
+        self.steel_price_spin.setSuffix(self.tr("currency_per_kg"))
+        steel_price_layout.addWidget(QLabel(self.tr("steel_price")))
+        steel_price_layout.addWidget(self.steel_price_spin)
+        
+        # Weight error margin settings
+        weight_error_layout = QHBoxLayout()
+        self.weight_error_spin = QDoubleSpinBox()
+        self.weight_error_spin.setRange(0, 100)
+        self.weight_error_spin.setValue(12)
+        self.weight_error_spin.setSuffix(" %")
+        weight_error_layout.addWidget(QLabel(self.tr("weight_error_margin")))
+        weight_error_layout.addWidget(self.weight_error_spin)
+        
+        layout.addLayout(default_length_layout)
+        layout.addLayout(kerf_layout)
+        layout.addLayout(steel_price_layout)
+        layout.addLayout(weight_error_layout)
+        settings_group.setLayout(layout)
+        return settings_group
 
 def main():
     try:

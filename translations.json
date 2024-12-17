@@ -38,7 +38,22 @@
         "weight_results": "=== Weight Results ===",
         "results_total_weight": "├── Total Weight: {0}kg",
         "results_adjusted_weight": "├── Adjusted Weight (+{0}%): {1}kg",
-        "results_total_price": "└── Total Price: {0}"
+        "results_total_price": "└── Total Price: {0}",
+        "invoice": {
+            "title": "Invoice",
+            "date": "Date",
+            "headers": {
+                "type": "Type",
+                "weight_per_meter": "Weight/m (kg)",
+                "stock_length": "Stock Length",
+                "quantity": "QTY",
+                "total_weight": "Total Weight (kg)",
+                "percentage": "Percentage",
+                "total_price": "Total Price"
+            },
+            "total": "TOTAL",
+            "total_adjusted": "ADJUSTED TOTAL (+{0}%)"
+        }
     },
     "fr": {
         "app_title": "Optimiseur de Découpe Pro",
@@ -79,7 +94,22 @@
         "weight_results": "=== Résultats poids ===",
         "results_total_weight": "├── Poids total: {0}kg",
         "results_adjusted_weight": "├── Poids ajusté (+{0}%): {1}kg",
-        "results_total_price": "└── Prix total: {0}"
+        "results_total_price": "└── Prix total: {0}",
+        "invoice": {
+            "title": "Facture",
+            "date": "Date",
+            "headers": {
+                "type": "Type",
+                "weight_per_meter": "Poids/ml (kg)",
+                "stock_length": "Long. Stock",
+                "quantity": "QTE",
+                "total_weight": "Poids Total (kg)",
+                "percentage": "Pourcentage",
+                "total_price": "Prix Total"
+            },
+            "total": "TOTAL",
+            "total_adjusted": "TOTAL AJUSTE (+{0}%)"
+        }
     },
     "ar": {
         "app_title": "برنامج تحسين القص",
@@ -144,6 +174,21 @@
         "Poids Total (kg)": "الوزن الكلي (كجم)",
         "Pourcentage": "النسبة المئوية",
         "Prix Total": "السعر الكلي",
-        "TOTAL AJUSTE": "المجموع المعدل"
+        "TOTAL AJUSTE": "المجموع المعدل",
+        "invoice": {
+            "title": "فاتورة",
+            "date": "التاريخ",
+            "headers": {
+                "type": "النوع",
+                "weight_per_meter": "الوزن/متر (كجم)",
+                "stock_length": "طول المخزون",
+                "quantity": "الكمية",
+                "total_weight": "الوزن الكلي (كجم)",
+                "percentage": "النسبة المئوية",
+                "total_price": "السعر الكلي"
+            },
+            "total": "المجموع",
+            "total_adjusted": "المجموع المعدل (+{0}٪)"
+        }
     }
 }

@@ -2,6 +2,26 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 import xlsxwriter
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.lib.units import mm
+import datetime
+import json
+
+# Load translations at module level
+def load_translations():
+    try:
+        with open('translations.json', 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"Error loading translations: {str(e)}")
+        return {}
+
+translations = load_translations()
 
 def load_data(file_path):
     """Load data from Excel files"""
@@ -225,6 +245,254 @@ def calculate_weight_stats(data_df):
     
     return weight_stats
 
+def export_invoice_pdf(results, weight_stats, total_weight, adjusted_weight, steel_price, weight_error, output_path, language="fr"):
+    """Export a PDF invoice"""
+    try:
+        # Get translations for the current language
+        t = translations.get(language, {}).get("invoice", {})
+        if not t:
+            raise ValueError(f"Translations not found for language: {language}")
+            
+        # Create PDF document
+        pdf_path = output_path.replace('.xlsx', '_facture.pdf')
+        doc = SimpleDocTemplate(
+            pdf_path,
+            pagesize=A4,
+            rightMargin=30,
+            leftMargin=30,
+            topMargin=30,
+            bottomMargin=30
+        )
+        
+        # Styles
+        styles = getSampleStyleSheet()
+        style_title = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=16,
+            spaceAfter=30,
+            alignment=1  # Center alignment
+        )
+        
+        # Content elements
+        elements = []
+        
+        # Add title and date
+        elements.append(Paragraph(t["title"], style_title))
+        date_text = f"{t['date']}: {datetime.datetime.now().strftime('%d/%m/%Y')}"
+        elements.append(Paragraph(date_text, styles['Normal']))
+        elements.append(Spacer(1, 20))
+        
+        # Prepare table data using translations
+        headers = [
+            t["headers"]["type"],
+            t["headers"]["weight_per_meter"],
+            t["headers"]["stock_length"],
+            t["headers"]["quantity"],
+            t["headers"]["total_weight"],
+            t["headers"]["percentage"],
+            t["headers"]["total_price"]
+        ]
+        
+        data = [headers]
+        
+        # Add data rows
+        for result in results:
+            profile = result[0]
+            stock_length = result[1]
+            stock_used = result[2]
+            
+            qty = sum(len(pieces) for pieces, _ in stock_used)
+            profile_weight = weight_stats.get(profile, 0)
+            weight_per_unit = profile_weight/qty if qty > 0 else 0
+            percentage = profile_weight / total_weight if total_weight > 0 else 0
+            price = profile_weight * steel_price
+            
+            row = [
+                profile,
+                f"{weight_per_unit:.3f}",
+                f"{stock_length}",
+                f"{qty}",
+                f"{profile_weight:.3f}",
+                f"{percentage:.1%}",
+                f"{price:.3f}"
+            ]
+            data.append(row)
+        
+        # Add totals
+        total_price = total_weight * steel_price
+        adjusted_price = adjusted_weight * steel_price
+        adjusted_percentage = 1 + (weight_error/100)
+        
+        # Total row using translations
+        data.append([
+            t["total"],
+            "",
+            "",
+            "",
+            f"{total_weight:.3f}",
+            "100%",
+            f"{total_price:.3f}"
+        ])
+        
+        # Adjusted total row using translations
+        data.append([
+            t["total_adjusted"].format(weight_error),
+            "",
+            "",
+            "",
+            f"{adjusted_weight:.3f}",
+            f"{adjusted_percentage:.0%}",
+            f"{adjusted_price:.3f}"
+        ])
+        
+        # Create table
+        table = Table(data, colWidths=[35*mm, 25*mm, 25*mm, 20*mm, 30*mm, 25*mm, 30*mm])
+        
+        # Add style to table
+        style = TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 11),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, -2), (-1, -1), colors.lightgrey),
+            ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 10),
+            ('ALIGN', (0, -2), (-1, -1), 'CENTER'),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('BOX', (0, 0), (-1, -1), 2, colors.black),
+        ])
+        table.setStyle(style)
+        
+        elements.append(table)
+        
+        # Build PDF
+        doc.build(elements)
+        print(f"Invoice PDF exported to: {pdf_path}")
+        
+    except Exception as e:
+        print(f"Error exporting PDF invoice: {str(e)}")
+        raise
+
+def export_invoice_excel(results, weight_stats, total_weight, adjusted_weight, steel_price, weight_error, output_path, language="fr"):
+    """Export invoice to Excel"""
+    try:
+        # Get translations for the current language
+        t = translations.get(language, {}).get("invoice", {})
+        if not t:
+            raise ValueError(f"Translations not found for language: {language}")
+            
+        # Create Excel workbook
+        excel_path = output_path.replace('.xlsx', '_facture.xlsx')
+        workbook = xlsxwriter.Workbook(excel_path)
+        worksheet = workbook.add_worksheet("Facture")
+        
+        # Add formats
+        header_format = workbook.add_format({
+            'bold': True,
+            'align': 'center',
+            'valign': 'vcenter',
+            'bg_color': '#D3D3D3',
+            'border': 1
+        })
+        
+        cell_format = workbook.add_format({
+            'align': 'center',
+            'valign': 'vcenter',
+            'border': 1
+        })
+        
+        number_format = workbook.add_format({
+            'align': 'center',
+            'valign': 'vcenter',
+            'border': 1,
+            'num_format': '#,##0.000'
+        })
+        
+        percent_format = workbook.add_format({
+            'align': 'center',
+            'valign': 'vcenter',
+            'border': 1,
+            'num_format': '0.0%'
+        })
+        
+        # Set column widths
+        worksheet.set_column('A:A', 15)  # Type
+        worksheet.set_column('B:B', 15)  # Weight per unit
+        worksheet.set_column('C:C', 12)  # Stock length
+        worksheet.set_column('D:D', 10)  # Quantity
+        worksheet.set_column('E:E', 15)  # Total weight
+        worksheet.set_column('F:F', 12)  # Percentage
+        worksheet.set_column('G:G', 15)  # Total price
+        
+        # Write title and date
+        title = translations[language]["invoice"]["title"]
+        date = translations[language]["invoice"]["date"]
+        worksheet.write(0, 0, title, header_format)
+        worksheet.write(1, 0, f"{date}: {datetime.datetime.now().strftime('%d/%m/%Y')}", cell_format)
+        
+        # Write headers
+        headers = translations[language]["invoice"]["headers"]
+        row = 3
+        for col, header in enumerate(headers.values()):
+            worksheet.write(row, col, header, header_format)
+        
+        # Write data
+        row = 4
+        for result in results:
+            profile = result[0]
+            stock_length = result[1]
+            stock_used = result[2]
+            
+            qty = sum(len(pieces) for pieces, _ in stock_used)
+            profile_weight = weight_stats.get(profile, 0)
+            weight_per_unit = profile_weight/qty if qty > 0 else 0
+            percentage = profile_weight / total_weight if total_weight > 0 else 0
+            price = profile_weight * steel_price
+            
+            worksheet.write(row, 0, profile, cell_format)
+            worksheet.write(row, 1, f"{weight_per_unit:.3f}", cell_format)
+            worksheet.write(row, 2, stock_length, cell_format)
+            worksheet.write(row, 3, qty, cell_format)
+            worksheet.write(row, 4, profile_weight, cell_format)
+            worksheet.write(row, 5, f"{percentage:.1%}", cell_format)
+            worksheet.write(row, 6, f"{price:.3f}", cell_format)
+            row += 1
+        
+        # Write totals
+        total_price = total_weight * steel_price
+        adjusted_price = adjusted_weight * steel_price
+        adjusted_percentage = 1 + (weight_error/100)  # Calculate actual percentage
+        
+        worksheet.write(row, 0, translations[language]["invoice"]["total"], header_format)
+        worksheet.write(row, 1, "", header_format)
+        worksheet.write(row, 2, "", header_format)
+        worksheet.write(row, 3, "", header_format)
+        worksheet.write(row, 4, f"{total_weight:.3f}", cell_format)
+        worksheet.write(row, 5, "100%", cell_format)
+        worksheet.write(row, 6, f"{total_price:.3f}", cell_format)
+        row += 1
+        
+        worksheet.write(row, 0, f"{translations[language]['invoice']['total_adjusted']} ({weight_error}%)", header_format)
+        worksheet.write(row, 1, "", header_format)
+        worksheet.write(row, 2, "", header_format)
+        worksheet.write(row, 3, "", header_format)
+        worksheet.write(row, 4, f"{adjusted_weight:.3f}", cell_format)
+        worksheet.write(row, 5, f"{adjusted_percentage:.0%}", cell_format)
+        worksheet.write(row, 6, f"{adjusted_price:.3f}", cell_format)
+        row += 1
+        
+        # Save workbook
+        workbook.close()
+        print(f"Invoice Excel exported to: {excel_path}")
+        
+    except Exception as e:
+        print(f"Error exporting invoice to Excel: {str(e)}")
+        raise
+
 def main(data, settings_df, output_path, image_path, default_length, weight_error=12, steel_price=0):
     """Main function to run the optimization"""
     try:
@@ -244,22 +512,42 @@ def main(data, settings_df, output_path, image_path, default_length, weight_erro
             draw_cutting_plan(results, image_path)
             export_to_excel(results, output_path, image_path)
             
-            # Calculate and return waste statistics
+            # Calculate statistics
             waste_stats = calculate_waste_percentage(results)
-            
-            # Calculate weight statistics
             weight_stats = calculate_weight_stats(data_cleaned)
             
-            # Calculate total weight and price
+            # Calculate totals
             total_weight = sum(weight_stats.values())
-            adjusted_weight = total_weight + (total_weight * (weight_error/100))
+            adjusted_weight = total_weight * (1 + (weight_error/100))
             total_price = adjusted_weight * steel_price
             
-            # Add weight and price info to stats
+            # Export invoice PDF with weight_error parameter
+            export_invoice_pdf(
+                results,
+                weight_stats,
+                total_weight,
+                adjusted_weight,
+                steel_price,
+                weight_error,  # Pass weight_error to invoice function
+                output_path
+            )
+            
+            # Export invoice Excel
+            export_invoice_excel(
+                results,
+                weight_stats,
+                total_weight,
+                adjusted_weight,
+                steel_price,
+                weight_error,
+                output_path
+            )
+            
+            # Return stats
             stats = {
                 'waste': waste_stats,
                 'weight': {
-                    'profiles': {k: round(v, 3) for k, v in weight_stats.items()},
+                    'profiles': weight_stats,
                     'total': round(total_weight, 3),
                     'adjusted': round(adjusted_weight, 3),
                     'price': round(total_price, 3)

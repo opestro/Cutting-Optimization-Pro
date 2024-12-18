@@ -960,6 +960,17 @@ class CuttingOptimizerGUI(QMainWindow):
                 QMessageBox.warning(self, "Error", "Please select a file first")
                 return
             
+            # Get base filename without extension
+            base_filename = os.path.splitext(os.path.basename(input_file))[0]
+            
+            # Get AppData path and create output directory with file name
+            app_data = os.path.join(os.getenv('APPDATA'), 'Cutting Optimizer Pro')
+            output_dir = os.path.join(app_data, 'output', base_filename)
+            os.makedirs(output_dir, exist_ok=True)
+            
+            # Create output file paths including image path
+            output_image_path = os.path.join(output_dir, f'{base_filename}_cutting_plan.png')
+            
             debug_window.append_debug(self.tr("starting_optimization"), delay=True)
             debug_window.append_debug(f"{self.tr('default_stock_length')}: {self.default_length_spin.value()}mm", delay=True)
             debug_window.append_debug(f"{self.tr('kerf_width')}: {self.kerf_width_spin.value()}mm\n", delay=True)
@@ -1026,7 +1037,7 @@ class CuttingOptimizerGUI(QMainWindow):
             
             debug_window.append_debug("\nRunning optimization algorithm...")
             
-            # Run optimization with input file name
+            # Run optimization with updated paths
             stats = co.main(
                 data_df, 
                 settings_df,

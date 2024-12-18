@@ -42,9 +42,18 @@ Source: "dist\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion recursesu
 ; Fonts
 Source: "fonts\*"; DestDir: "{fonts}"; FontInstall: "Noto Sans Arabic"; Flags: onlyifdoesntexist uninsneveruninstall
 
+; Icons
+Source: "icons\*"; DestDir: "{app}\icons"; Flags: ignoreversion recursesubdirs
+
 ; Configuration files
 Source: "translations.json"; DestDir: "{app}"; Flags: ignoreversion
 Source: "version.json"; DestDir: "{app}"; Flags: ignoreversion
+
+[Dirs]
+; Create AppData directories during installation
+Name: "{userappdata}\{#MyAppName}"
+Name: "{userappdata}\{#MyAppName}\logs"
+Name: "{userappdata}\{#MyAppName}\output"
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"

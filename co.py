@@ -169,25 +169,34 @@ def optimize_cutting(data, settings_df, default_length):
     return results
 
 def draw_cutting_plan(results, save_path):
-    fig, axs = plt.subplots(len(results), figsize=(10, len(results) * 2))
-    
-    if len(results) == 1:
-        axs = [axs]
-    
-    for i, (profile, stock_length, stock_used) in enumerate(results):
-        for j, (pieces, total_used) in enumerate(stock_used):
-            axs[i].barh(y=j, width=stock_length, color='grey', edgecolor='black')
-            start = 0
-            for piece in pieces:
-                axs[i].barh(y=j, width=piece, left=start, color='blue', edgecolor='black')
-                start += piece
-            axs[i].set_xlim(0, stock_length)
-            axs[i].set_title(f'Profile {profile}: Piece {j+1}: Total Length Used = {total_used} mm, Remaining = {stock_length - total_used} mm')
-            axs[i].axis('off')
+    """Draw cutting plan and save to AppData"""
+    try:
+        fig, axs = plt.subplots(len(results), figsize=(10, len(results) * 2))
+        
+        if len(results) == 1:
+            axs = [axs]
+        
+        for i, (profile, stock_length, stock_used) in enumerate(results):
+            for j, (pieces, total_used) in enumerate(stock_used):
+                axs[i].barh(y=j, width=stock_length, color='grey', edgecolor='black')
+                start = 0
+                for piece in pieces:
+                    axs[i].barh(y=j, width=piece, left=start, color='blue', edgecolor='black')
+                    start += piece
+                axs[i].set_xlim(0, stock_length)
+                axs[i].set_title(f'Profile {profile}: Piece {j+1}: Total Length Used = {total_used} mm, Remaining = {stock_length - total_used} mm')
+                axs[i].axis('off')
 
-    plt.tight_layout()
-    plt.savefig(save_path)
-    plt.close()
+        plt.tight_layout()
+        
+        # Ensure directory exists
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        plt.savefig(save_path)
+        plt.close()
+        
+    except Exception as e:
+        print(f"Error drawing cutting plan: {str(e)}")
+        raise
 
 def export_to_excel(results, output_path, image_path, language="fr"):
     """Export cutting plan to Excel"""

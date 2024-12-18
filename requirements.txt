@@ -20,3 +20,5 @@ packaging==23.1
 
 # Build Tools
 pyinstaller==6.1.0
+
+reportlab==3.6.14

@@ -24,12 +24,16 @@ from datetime import datetime
 def setup_logger():
     """Set up logging configuration"""
     try:
-        # Create logs directory if it doesn't exist
-        if not os.path.exists('logs'):
-            os.makedirs('logs')
+        # Get user's AppData folder
+        app_data = os.path.join(os.getenv('APPDATA'), 'Cutting Optimizer Pro')
+        logs_dir = os.path.join(app_data, 'logs')
+        
+        # Create directories if they don't exist
+        os.makedirs(app_data, exist_ok=True)
+        os.makedirs(logs_dir, exist_ok=True)
         
         # Create log filename with timestamp
-        log_filename = os.path.join('logs', f'debug_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log')
+        log_filename = os.path.join(logs_dir, f'debug_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log')
         
         # Configure logging
         logging.basicConfig(
@@ -50,8 +54,11 @@ def setup_logger():
         return logger
         
     except Exception as e:
-        # If logging setup fails, write to emergency log file
-        with open('emergency_log.txt', 'a') as f:
+        # If logging setup fails, write to emergency log in AppData
+        emergency_log = os.path.join(os.getenv('APPDATA'), 'Cutting Optimizer Pro', 'emergency_log.txt')
+        os.makedirs(os.path.dirname(emergency_log), exist_ok=True)
+        
+        with open(emergency_log, 'a', encoding='utf-8') as f:
             f.write(f"{datetime.now()} - Error setting up logger: {str(e)}\n")
         raise
 
@@ -574,6 +581,7 @@ class CuttingOptimizerGUI(QMainWindow):
                 'add': QIcon('icons/dark/add.png'),
                 'delete': QIcon('icons/dark/delete.png'),
                 'help': QIcon('icons/dark/help.png'),
+                'folder': QIcon('icons/dark/folder.png'),
             },
             'light': {
                 'app': QIcon('icons/light/app.png'),
@@ -585,11 +593,24 @@ class CuttingOptimizerGUI(QMainWindow):
                 'add': QIcon('icons/light/add.png'),
                 'delete': QIcon('icons/light/delete.png'),
                 'help': QIcon('icons/light/help.png'),
+                'folder': QIcon('icons/light/folder.png'),
             }
         }
 
         # Create menu bar
         menubar = self.menuBar()
+        
+        # File menu
+        file_menu = menubar.addMenu(self.tr('File'))
+        
+        # Add "Open Output Folder" action - with folder icon
+        theme = 'dark' if self.dark_mode else 'light'
+        open_folder_action = QAction(self.icons[theme]['folder'], self.tr('Open Output Folder'), self)
+        open_folder_action.setStatusTip(self.tr('Open Output Folder'))
+        open_folder_action.triggered.connect(self.open_output_folder)
+        file_menu.addAction(open_folder_action)
+        
+        # View menu (existing)
         view_menu = menubar.addMenu(self.tr('View'))
         
         # Add theme toggle action
@@ -789,7 +810,7 @@ class CuttingOptimizerGUI(QMainWindow):
                         'length': int(row['Long.']),
                         'qty': int(row['Qté']),
                         'weight': float(row['Poids']),
-                        'total_weight': float(row['Poids'] * row['Qté'])  # Calculate total weight
+                        'total_weight': float(row['Pds Tot'])  # Calculate total weight
                     })
             
             self.update_profile_table()
@@ -933,6 +954,12 @@ class CuttingOptimizerGUI(QMainWindow):
             debug_window = DebugWindow(self)
             debug_window.show()
             
+            # Get input file name from work_file_label
+            input_file = self.work_file_label.text()
+            if input_file == self.tr('no_file_selected'):
+                QMessageBox.warning(self, "Error", "Please select a file first")
+                return
+            
             debug_window.append_debug(self.tr("starting_optimization"), delay=True)
             debug_window.append_debug(f"{self.tr('default_stock_length')}: {self.default_length_spin.value()}mm", delay=True)
             debug_window.append_debug(f"{self.tr('kerf_width')}: {self.kerf_width_spin.value()}mm\n", delay=True)
@@ -992,22 +1019,22 @@ class CuttingOptimizerGUI(QMainWindow):
                                 'Profil': profile,
                                 'Long.': int(length_item.text()),
                                 'Qté': qty_spin.value(),
-                                'Poids': 0.0,  # Default values if original data not available
+                                'Poids': 0.0,
                                 'Pds Tot': 0.0
                             })
                 data_df = pd.DataFrame(optimization_data)
             
             debug_window.append_debug("\nRunning optimization algorithm...")
             
-            # Run optimization with weight error margin and steel price
+            # Run optimization with input file name
             stats = co.main(
                 data_df, 
                 settings_df,
-                'optimized_cutting_plan.xlsx',
-                'cutting_plan.png',
+                input_file,  # Pass the input file path
                 self.default_length_spin.value(),
                 self.weight_error_spin.value(),
-                self.steel_price_spin.value()
+                self.steel_price_spin.value(),
+                self.current_language
             )
             
             if stats:
@@ -1140,6 +1167,25 @@ class CuttingOptimizerGUI(QMainWindow):
         layout.addLayout(weight_error_layout)
         settings_group.setLayout(layout)
         return settings_group
+
+    def open_output_folder(self):
+        """Open the output folder in Windows Explorer"""
+        try:
+            # Get the AppData path for the application
+            app_data = os.path.join(os.getenv('APPDATA'), 'Cutting Optimizer Pro')
+            
+            # Create the directory if it doesn't exist
+            os.makedirs(app_data, exist_ok=True)
+            
+            # Open the folder in Windows Explorer
+            os.startfile(app_data)
+            
+        except Exception as e:
+            QMessageBox.warning(
+                self,
+                self.tr("Error"),
+                self.tr("Could not open output folder: ") + str(e)
+            )
 
 def main():
     try:

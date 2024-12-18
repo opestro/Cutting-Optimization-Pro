@@ -5,7 +5,7 @@ a = Analysis(
     ['gui.py'],
     pathex=[],
     binaries=[],
-    datas=[('icons/*', 'icons/'), ('translations.json', '.'), ('version.json', '.'), ('co.py', '.')],
+    datas=[('icons/*', 'icons/'), ('translations.json', '.'), ('version.json', '.'), ('fonts/*', 'fonts/'), ('co.py', '.')],
     hiddenimports=['pandas', 'matplotlib', 'openpyxl', 'xlsxwriter'],
     hookspath=[],
     hooksconfig={},

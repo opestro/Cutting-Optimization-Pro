@@ -53,7 +53,10 @@
             },
             "total": "TOTAL",
             "total_adjusted": "ADJUSTED TOTAL (+{0}%)"
-        }
+        },
+        "File": "File",
+        "Open Output Folder": "Open Output Folder",
+        "Could not open output folder: ": "Could not open output folder: "
     },
     "fr": {
         "app_title": "Optimiseur de Découpe Pro",
@@ -109,7 +112,10 @@
             },
             "total": "TOTAL",
             "total_adjusted": "TOTAL AJUSTE (+{0}%)"
-        }
+        },
+        "File": "Fichier",
+        "Open Output Folder": "Ouvrir le dossier de sortie",
+        "Could not open output folder: ": "Impossible d'ouvrir le dossier de sortie : "
     },
     "ar": {
         "app_title": "برنامج تحسين القص",
@@ -189,6 +195,9 @@
             },
             "total": "المجموع",
             "total_adjusted": "المجموع المعدل (+{0}٪)"
-        }
+        },
+        "File": "ملف",
+        "Open Output Folder": "فتح مجلد المخرجات",
+        "Could not open output folder: ": "تعذر فتح مجلد المخرجات: "
     }
 }

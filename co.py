@@ -11,6 +11,22 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.lib.units import mm
 import datetime
 import json
+from reportlab.lib.fonts import addMapping
+
+# Register Arabic fonts with full embedding
+try:
+    # Register the Arabic fonts
+    pdfmetrics.registerFont(TTFont('Arabic', 'fonts/NotoSansArabic-Regular.ttf', validate=True))
+    pdfmetrics.registerFont(TTFont('Arabic-Bold', 'fonts/NotoSansArabic-Bold.ttf', validate=True))
+    
+    # Add font mapping
+    addMapping('Arabic', 0, 0, 'Arabic')  # normal
+    addMapping('Arabic', 1, 0, 'Arabic-Bold')  # bold
+    
+    print("Arabic fonts registered successfully")
+except Exception as e:
+    print(f"Warning: Error loading Arabic fonts: {str(e)}")
+    print("Using fallback fonts.")
 
 # Load translations at module level
 def load_translations():
@@ -173,52 +189,58 @@ def draw_cutting_plan(results, save_path):
     plt.savefig(save_path)
     plt.close()
 
-def export_to_excel(results, output_path, image_path, language="en"):
-    # Translation dictionary
-    translations = {
-        "en": {
-            "Profile": "Profile",
-            "Stock Length": "Stock Length",
-            "Cut Index": "Cut Index",
-            "Pieces Cut": "Pieces Cut",
-            "Total Length Used": "Total Length Used",
-            "Remaining Length": "Remaining Length",
-            "Cutting Plan": "Cutting Plan"
-        },
-        "fr": {
-            "Profile": "Profil",
-            "Stock Length": "Longueur Stock",
-            "Cut Index": "Index Coupe",
-            "Pieces Cut": "Pièces Coupées",
-            "Total Length Used": "Longueur Totale Utilisée",
-            "Remaining Length": "Longueur Restante",
-            "Cutting Plan": "Plan de Découpe"
+def export_to_excel(results, output_path, image_path, language="fr"):
+    """Export cutting plan to Excel"""
+    try:
+        # Get translations with fallback
+        if language not in translations:
+            language = "en"
+            
+        # Get translations for cutting plan
+        t = translations[language]
+        if not t:
+            raise ValueError(f"Translations not found for language: {language}")
+        
+        # Create column headers dictionary
+        columns = {
+            "profile": t.get("Profile", "Profile"),
+            "stock_length": t.get("Stock Length", "Stock Length"),
+            "cut_index": t.get("Cut Index", "Cut Index"),
+            "pieces_cut": t.get("Pieces Cut", "Pieces Cut"),
+            "total_length": t.get("Total Length Used", "Total Length Used"),
+            "remaining": t.get("Remaining Length", "Remaining Length")
         }
-    }
-    
-    t = translations[language]
-    
-    data_to_export = []
-    for profile, stock_length, stock_used in results:
-        for j, (pieces, remaining) in enumerate(stock_used):
-            data_to_export.append({
-                t["Profile"]: profile,
-                t["Stock Length"]: stock_length,
-                t["Cut Index"]: j+1,
-                t["Pieces Cut"]: pieces,
-                t["Total Length Used"]: sum(pieces),
-                t["Remaining Length"]: remaining
-            })
-    
-    df = pd.DataFrame(data_to_export)
-    
-    writer = pd.ExcelWriter(output_path, engine='xlsxwriter')
-    df.to_excel(writer, sheet_name=t["Cutting Plan"], index=False)
-    
-    workbook = writer.book
-    worksheet = writer.sheets[t["Cutting Plan"]]
-    worksheet.insert_image('H2', image_path)
-    writer._save()
+        
+        data_to_export = []
+        for profile, stock_length, stock_used in results:
+            for j, (pieces, remaining) in enumerate(stock_used):
+                data_to_export.append({
+                    columns["profile"]: profile,
+                    columns["stock_length"]: stock_length,
+                    columns["cut_index"]: j+1,
+                    columns["pieces_cut"]: pieces,
+                    columns["total_length"]: sum(pieces),
+                    columns["remaining"]: remaining
+                })
+        
+        df = pd.DataFrame(data_to_export)
+        
+        writer = pd.ExcelWriter(output_path, engine='xlsxwriter')
+        df.to_excel(writer, sheet_name=t.get("Cutting Plan", "Cutting Plan"), index=False)
+        
+        workbook = writer.book
+        worksheet = writer.sheets[t.get("Cutting Plan", "Cutting Plan")]
+        
+        # Add RTL support for Arabic
+        if language == "ar":
+            worksheet.right_to_left()
+            
+        worksheet.insert_image('H2', image_path)
+        writer._save()
+        
+    except Exception as e:
+        print(f"Error exporting to Excel: {str(e)}")
+        raise
 
 def calculate_waste_percentage(results):
     """Calculate waste percentage for each profile"""
@@ -249,11 +271,14 @@ def export_invoice_pdf(results, weight_stats, total_weight, adjusted_weight, ste
     """Export a PDF invoice"""
     try:
         # Get translations for the current language
-        t = translations.get(language, {}).get("invoice", {})
-        if not t:
-            raise ValueError(f"Translations not found for language: {language}")
+        if language not in translations:
+            language = "en"
             
-        # Create PDF document
+        t = translations[language].get("invoice", {})
+        if not t:
+            raise ValueError(f"Invoice translations not found for language: {language}")
+        
+        # Create PDF document with font embedding
         pdf_path = output_path.replace('.xlsx', '_facture.pdf')
         doc = SimpleDocTemplate(
             pdf_path,
@@ -261,26 +286,82 @@ def export_invoice_pdf(results, weight_stats, total_weight, adjusted_weight, ste
             rightMargin=30,
             leftMargin=30,
             topMargin=30,
-            bottomMargin=30
+            bottomMargin=30,
+            encoding='UTF-8'  # Ensure UTF-8 encoding
         )
         
-        # Styles
+        # Styles with RTL support
         styles = getSampleStyleSheet()
-        style_title = ParagraphStyle(
-            'CustomTitle',
-            parent=styles['Heading1'],
-            fontSize=16,
-            spaceAfter=30,
-            alignment=1  # Center alignment
-        )
+        if language == "ar":
+            # Arabic styles with explicit font encoding
+            style_title = ParagraphStyle(
+                'CustomTitle',
+                parent=styles['Heading1'],
+                fontSize=16,
+                fontName='Arabic-Bold',
+                alignment=2,  # Right alignment for Arabic
+                wordWrap='RTL',
+                spaceAfter=30,
+                encoding='UTF-8'
+            )
+            normal_style = ParagraphStyle(
+                'ArabicNormal',
+                parent=styles['Normal'],
+                fontName='Arabic',
+                alignment=2,  # Right alignment for Arabic
+                wordWrap='RTL',
+                encoding='UTF-8'
+            )
+            
+            # Create table style with Arabic font
+            table_style = TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Arabic-Bold'),
+                ('FONTNAME', (0, 1), (-1, -1), 'Arabic'),
+                ('FONTSIZE', (0, 0), (-1, 0), 11),
+                ('FONTSIZE', (0, 1), (-1, -1), 10),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, -2), (-1, -1), colors.lightgrey),
+                ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+                ('ALIGN', (0, -2), (-1, -1), 'CENTER'),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('BOX', (0, 0), (-1, -1), 2, colors.black),
+            ])
+        else:
+            # Default styles for other languages
+            style_title = ParagraphStyle(
+                'CustomTitle',
+                parent=styles['Heading1'],
+                fontSize=16,
+                spaceAfter=30,
+                alignment=1
+            )
+            normal_style = styles['Normal']
+            table_style = TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 11),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, -2), (-1, -1), colors.lightgrey),
+                ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 1), (-1, -1), 10),
+                ('ALIGN', (0, -2), (-1, -1), 'CENTER'),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('BOX', (0, 0), (-1, -1), 2, colors.black),
+            ])
         
         # Content elements
         elements = []
         
-        # Add title and date
+        # Add title and date with proper RTL handling
         elements.append(Paragraph(t["title"], style_title))
         date_text = f"{t['date']}: {datetime.datetime.now().strftime('%d/%m/%Y')}"
-        elements.append(Paragraph(date_text, styles['Normal']))
+        elements.append(Paragraph(date_text, normal_style))
         elements.append(Spacer(1, 20))
         
         # Prepare table data using translations
@@ -350,22 +431,7 @@ def export_invoice_pdf(results, weight_stats, total_weight, adjusted_weight, ste
         table = Table(data, colWidths=[35*mm, 25*mm, 25*mm, 20*mm, 30*mm, 25*mm, 30*mm])
         
         # Add style to table
-        style = TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 11),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('BACKGROUND', (0, -2), (-1, -1), colors.lightgrey),
-            ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
-            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 1), (-1, -1), 10),
-            ('ALIGN', (0, -2), (-1, -1), 'CENTER'),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
-            ('BOX', (0, 0), (-1, -1), 2, colors.black),
-        ])
-        table.setStyle(style)
+        table.setStyle(table_style)
         
         elements.append(table)
         
@@ -380,15 +446,22 @@ def export_invoice_pdf(results, weight_stats, total_weight, adjusted_weight, ste
 def export_invoice_excel(results, weight_stats, total_weight, adjusted_weight, steel_price, weight_error, output_path, language="fr"):
     """Export invoice to Excel"""
     try:
-        # Get translations for the current language
-        t = translations.get(language, {}).get("invoice", {})
-        if not t:
-            raise ValueError(f"Translations not found for language: {language}")
+        # Get translations with fallback
+        if language not in translations:
+            language = "en"
             
+        t = translations[language].get("invoice", {})
+        if not t:
+            raise ValueError(f"Invoice translations not found for language: {language}")
+        
         # Create Excel workbook
         excel_path = output_path.replace('.xlsx', '_facture.xlsx')
         workbook = xlsxwriter.Workbook(excel_path)
         worksheet = workbook.add_worksheet("Facture")
+        
+        # Add RTL support for Arabic
+        if language == "ar":
+            worksheet.right_to_left()
         
         # Add formats
         header_format = workbook.add_format({
@@ -493,68 +566,74 @@ def export_invoice_excel(results, weight_stats, total_weight, adjusted_weight, s
         print(f"Error exporting invoice to Excel: {str(e)}")
         raise
 
-def main(data, settings_df, output_path, image_path, default_length, weight_error=12, steel_price=0):
-    """Main function to run the optimization"""
+def main(data_df, settings_df, input_filename, default_length, weight_error, steel_price, language="fr"):
     try:
-        # If data is already a DataFrame, use it directly
-        if isinstance(data, pd.DataFrame):
-            data_cleaned = data
-        else:
-            # If it's a file path, load and clean the data
-            data = load_data(data)
-            data_cleaned = clean_data(data)
+        # Get base filename without extension
+        base_filename = os.path.splitext(os.path.basename(input_filename))[0]
+        
+        # Get AppData path and create output directory with file name
+        app_data = os.path.join(os.getenv('APPDATA'), 'Cutting Optimizer Pro')
+        output_dir = os.path.join(app_data, 'output', base_filename)
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Create output file paths
+        output_excel_path = os.path.join(output_dir, f'{base_filename}_cutting_plan.xlsx')
+        output_invoice_excel = os.path.join(output_dir, f'{base_filename}_facture.xlsx')
+        output_image_path = os.path.join(output_dir, f'{base_filename}_cutting_plan.png')
+        output_pdf_path = os.path.join(output_dir, f'{base_filename}_facture.pdf')
+        
+        # Clean data
+        data_cleaned = clean_data(data_df)
         
         # Run optimization
         results = optimize_cutting(data_cleaned, settings_df, default_length)
         
-        # Generate outputs
-        if results:  # Only generate outputs if we have results
-            draw_cutting_plan(results, image_path)
-            export_to_excel(results, output_path, image_path)
-            
-            # Calculate statistics
-            waste_stats = calculate_waste_percentage(results)
-            weight_stats = calculate_weight_stats(data_cleaned)
-            
-            # Calculate totals
-            total_weight = sum(weight_stats.values())
-            adjusted_weight = total_weight * (1 + (weight_error/100))
-            total_price = adjusted_weight * steel_price
-            
-            # Export invoice PDF with weight_error parameter
-            export_invoice_pdf(
-                results,
-                weight_stats,
-                total_weight,
-                adjusted_weight,
-                steel_price,
-                weight_error,  # Pass weight_error to invoice function
-                output_path
-            )
-            
-            # Export invoice Excel
-            export_invoice_excel(
-                results,
-                weight_stats,
-                total_weight,
-                adjusted_weight,
-                steel_price,
-                weight_error,
-                output_path
-            )
-            
-            # Return stats
-            stats = {
-                'waste': waste_stats,
-                'weight': {
-                    'profiles': weight_stats,
-                    'total': round(total_weight, 3),
-                    'adjusted': round(adjusted_weight, 3),
-                    'price': round(total_price, 3)
-                }
+        # Calculate statistics
+        waste_stats = calculate_waste_percentage(results)
+        weight_stats = calculate_weight_stats(data_cleaned)
+        
+        # Calculate total and adjusted weights
+        total_weight = sum(weight_stats.values())
+        adjusted_weight = total_weight * (1 + weight_error/100)
+        total_price = adjusted_weight * steel_price
+        
+        # Draw cutting plan
+        draw_cutting_plan(results, output_image_path)
+        
+        # Export to Excel files
+        export_to_excel(results, output_excel_path, output_image_path, language)
+        export_invoice_excel(
+            results,
+            weight_stats,
+            total_weight,
+            adjusted_weight,
+            steel_price,
+            weight_error,
+            output_invoice_excel,
+            language
+        )
+        
+        # Export invoice PDF
+        export_invoice_pdf(
+            results,
+            weight_stats,
+            total_weight,
+            adjusted_weight,
+            steel_price,
+            weight_error,
+            output_pdf_path,
+            language
+        )
+        
+        return {
+            'waste': waste_stats,
+            'weight': {
+                'total': round(total_weight, 3),
+                'adjusted': round(adjusted_weight, 3),
+                'price': round(total_price, 2)
             }
-            
-            return stats
+        }
         
     except Exception as e:
-        raise Exception(f"Error in optimization process: {str(e)}")
+        print(f"Error in main function: {str(e)}")
+        raise

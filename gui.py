@@ -771,7 +771,7 @@ class CuttingOptimizerGUI(QMainWindow):
     def select_work_file(self):
         filename, _ = QFileDialog.getOpenFileName(
             self, 'Select Work File', '',
-            'Excel Files (*.xlsx *.xls)'
+            'Supported Files (*.xlsx *.xls *.csv);;Excel Files (*.xlsx *.xls);;CSV Files (*.csv)'
         )
         if filename:
             self.work_file_label.setText(filename)
@@ -779,11 +779,36 @@ class CuttingOptimizerGUI(QMainWindow):
             
     def detect_profiles(self, filename):
         try:
-            # Read Excel file, skipping header rows
-            data = pd.read_excel(filename, engine='openpyxl')
-            data = data.iloc[2:]  # Skip first two rows
-            data.columns = data.iloc[0]  # Use the first row as headers
-            data = data[1:]  # Skip the header row
+            # Determine file type from extension
+            file_extension = filename.lower().split('.')[-1]
+            
+            if file_extension in ['xlsx', 'xls']:
+                # Read Excel file, skipping header rows
+                data = pd.read_excel(filename, engine='openpyxl')
+                data = data.iloc[2:]  # Skip first two rows
+                data.columns = data.iloc[0]  # Use the first row as headers
+                data = data[1:]  # Skip the header row
+            elif file_extension == 'csv':
+                # Try different encodings and delimiters for CSV
+                encodings = ['utf-8', 'latin1', 'iso-8859-1']
+                delimiters = [',', ';', '\t']
+                
+                for encoding in encodings:
+                    for delimiter in delimiters:
+                        try:
+                            data = pd.read_csv(filename, encoding=encoding, sep=delimiter)
+                            # Skip header rows for CSV as well
+                            data = data.iloc[2:]
+                            data.columns = data.iloc[0]
+                            data = data[1:]
+                            break
+                        except Exception as e:
+                            continue
+                    if 'data' in locals():
+                        break
+                    
+            if 'data' not in locals():
+                raise Exception("Could not read CSV file with any combination of encoding and delimiter")
             
             print("DEBUG: Available columns:", data.columns.tolist())
             

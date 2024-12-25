@@ -40,13 +40,40 @@ def load_translations():
 translations = load_translations()
 
 def load_data(file_path):
-    """Load data from Excel files"""
+    """Load data from Excel or CSV files"""
     try:
         print(f"\nDEBUG: Loading file: {file_path}")
-        data = pd.read_excel(file_path, engine='openpyxl')
+        
+        # Determine file type from extension
+        file_extension = file_path.lower().split('.')[-1]
+        
+        if file_extension in ['xlsx', 'xls']:
+            data = pd.read_excel(file_path, engine='openpyxl')
+        elif file_extension == 'csv':
+            # Try different encodings and delimiters
+            encodings = ['utf-8', 'latin1', 'iso-8859-1']
+            delimiters = [',', ';', '\t']
+            
+            for encoding in encodings:
+                for delimiter in delimiters:
+                    try:
+                        data = pd.read_csv(file_path, encoding=encoding, sep=delimiter)
+                        print(f"DEBUG: Successfully read CSV with encoding {encoding} and delimiter {delimiter}")
+                        break
+                    except Exception as e:
+                        continue
+                if 'data' in locals():
+                    break
+                    
+            if 'data' not in locals():
+                raise Exception("Could not read CSV file with any combination of encoding and delimiter")
+        else:
+            raise Exception(f"Unsupported file format: {file_extension}")
+            
         print("DEBUG: File loaded successfully")
         print(f"DEBUG: Found {len(data)} rows and {len(data.columns)} columns")
         return data
+        
     except Exception as e:
         print(f"\nERROR in load_data:")
         print(f"Error message: {str(e)}")

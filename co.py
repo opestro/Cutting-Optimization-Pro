@@ -12,6 +12,7 @@ from reportlab.lib.units import mm
 import datetime
 import json
 from reportlab.lib.fonts import addMapping
+import sys
 
 # Register Arabic fonts with full embedding
 try:
@@ -225,19 +226,21 @@ def draw_cutting_plan(results, save_path):
         print(f"Error drawing cutting plan: {str(e)}")
         raise
 
-def export_to_excel(results, output_path, image_path, language="fr"):
+def export_to_excel(results, base_filename, image_path, language="fr"):
     """Export cutting plan to Excel"""
+
     try:
-        # Get translations with fallback
+        # Use script directory as default export location
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        output_path = os.path.join(script_dir, f'{base_filename}_cutting_plan.xlsx')
+
         if language not in translations:
             language = "en"
-            
-        # Get translations for cutting plan
+
         t = translations[language]
         if not t:
             raise ValueError(f"Translations not found for language: {language}")
-        
-        # Create column headers dictionary
+
         columns = {
             "profile": t.get("Profile", "Profile"),
             "stock_length": t.get("Stock Length", "Stock Length"),
@@ -246,7 +249,7 @@ def export_to_excel(results, output_path, image_path, language="fr"):
             "total_length": t.get("Total Length Used", "Total Length Used"),
             "remaining": t.get("Remaining Length", "Remaining Length")
         }
-        
+
         data_to_export = []
         for profile, stock_length, stock_used in results:
             for j, (pieces, remaining) in enumerate(stock_used):
@@ -258,26 +261,25 @@ def export_to_excel(results, output_path, image_path, language="fr"):
                     columns["total_length"]: sum(pieces),
                     columns["remaining"]: remaining
                 })
-        
+
         df = pd.DataFrame(data_to_export)
-        
         writer = pd.ExcelWriter(output_path, engine='xlsxwriter')
         df.to_excel(writer, sheet_name=t.get("Cutting Plan", "Cutting Plan"), index=False)
-        
+
         workbook = writer.book
         worksheet = writer.sheets[t.get("Cutting Plan", "Cutting Plan")]
-        
-        # Add RTL support for Arabic
+
         if language == "ar":
             worksheet.right_to_left()
-            
+
         worksheet.insert_image('H2', image_path)
         writer._save()
-        
+
+        print(f"Excel exported to: {output_path}")
+
     except Exception as e:
         print(f"Error exporting to Excel: {str(e)}")
         raise
-
 def calculate_waste_percentage(results):
     """Calculate waste percentage for each profile"""
     waste_stats = {}
@@ -601,22 +603,29 @@ def export_invoice_excel(results, weight_stats, total_weight, adjusted_weight, s
     except Exception as e:
         print(f"Error exporting invoice to Excel: {str(e)}")
         raise
-
+def get_app_data_dir():
+    if sys.platform == "win32":
+        return os.path.join(os.getenv('APPDATA'), 'Cutting Optimizer Pro')
+    elif sys.platform == "darwin":
+        return os.path.expanduser('~/Library/Application Support/Cutting Optimizer Pro')
+    else:
+        return os.path.expanduser('~/.config/Cutting Optimizer Pro')
 def main(data_df, settings_df, input_filename, default_length, weight_error, steel_price, language="fr"):
     try:
         # Get base filename without extension
         base_filename = os.path.splitext(os.path.basename(input_filename))[0]
         
         # Get AppData path and create output directory with file name
-        app_data = os.path.join(os.getenv('APPDATA'), 'Cutting Optimizer Pro')
+        app_data = get_app_data_dir()
         output_dir = os.path.join(app_data, 'output', base_filename)
         os.makedirs(output_dir, exist_ok=True)
         
         # Create output file paths
-        output_excel_path = os.path.join(output_dir, f'{base_filename}_cutting_plan.xlsx')
-        output_invoice_excel = os.path.join(output_dir, f'{base_filename}_facture.xlsx')
-        output_image_path = os.path.join(output_dir, f'{base_filename}_cutting_plan.png')
-        output_pdf_path = os.path.join(output_dir, f'{base_filename}_facture.pdf')
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        output_excel_path = os.path.join(script_dir, 'output', f'{base_filename}_cutting_plan.xlsx')
+        output_invoice_excel = os.path.join(script_dir, 'output', f'{base_filename}_facture.xlsx')
+        output_image_path = os.path.join(script_dir, 'output', f'{base_filename}_cutting_plan.png')
+        output_pdf_path = os.path.join(script_dir, 'output', f'{base_filename}_facture.pdf')
         
         # Clean data
         data_cleaned = clean_data(data_df)

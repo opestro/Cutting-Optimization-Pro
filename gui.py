@@ -21,47 +21,55 @@ import traceback
 from datetime import datetime
 
 # Set up logging at the start of the file
+import os
+import sys
+import logging
+from datetime import datetime
+from pathlib import Path
+def get_app_data_dir():
+    if sys.platform == "win32":
+        return os.path.join(os.getenv('APPDATA'), 'Cutting Optimizer Pro')
+    elif sys.platform == "darwin":
+        return os.path.expanduser('~/Library/Application Support/Cutting Optimizer Pro')
+    else:
+        return os.path.expanduser('~/.config/Cutting Optimizer Pro')
 def setup_logger():
-    """Set up logging configuration"""
+    """Set up logging configuration (cross-platform)"""
     try:
-        # Get user's AppData folder
-        app_data = os.path.join(os.getenv('APPDATA'), 'Cutting Optimizer Pro')
+        # Determine platform-specific base directory
+        base_dir = get_app_data_dir()
+
+        app_data = os.path.join(base_dir, 'Cutting Optimizer Pro')
         logs_dir = os.path.join(app_data, 'logs')
-        
+
         # Create directories if they don't exist
-        os.makedirs(app_data, exist_ok=True)
         os.makedirs(logs_dir, exist_ok=True)
-        
+
         # Create log filename with timestamp
         log_filename = os.path.join(logs_dir, f'debug_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log')
-        
+
         # Configure logging
         logging.basicConfig(
             level=logging.DEBUG,
             format='%(asctime)s - %(levelname)s - %(message)s',
             handlers=[
-                # File handler with UTF-8 encoding
                 logging.FileHandler(log_filename, encoding='utf-8'),
-                # Console handler
                 logging.StreamHandler(sys.stdout)
             ]
         )
-        
+
         logger = logging.getLogger(__name__)
         logger.info("=== Application Starting ===")
         logger.info(f"Python version: {sys.version}")
         logger.info(f"Operating System: {os.name}")
         return logger
-        
+
     except Exception as e:
-        # If logging setup fails, write to emergency log in AppData
-        emergency_log = os.path.join(os.getenv('APPDATA'), 'Cutting Optimizer Pro', 'emergency_log.txt')
-        os.makedirs(os.path.dirname(emergency_log), exist_ok=True)
-        
+        # Fallback emergency log location in the user's home directory
+        emergency_log = os.path.expanduser('~/cutting_optimizer_emergency_log.txt')
         with open(emergency_log, 'a', encoding='utf-8') as f:
             f.write(f"{datetime.now()} - Error setting up logger: {str(e)}\n")
         raise
-
 logger = setup_logger()
 
 COLORS = {
@@ -989,7 +997,7 @@ class CuttingOptimizerGUI(QMainWindow):
             base_filename = os.path.splitext(os.path.basename(input_file))[0]
             
             # Get AppData path and create output directory with file name
-            app_data = os.path.join(os.getenv('APPDATA'), 'Cutting Optimizer Pro')
+            app_data = get_app_data_dir()
             output_dir = os.path.join(app_data, 'output', base_filename)
             os.makedirs(output_dir, exist_ok=True)
             
@@ -1208,7 +1216,7 @@ class CuttingOptimizerGUI(QMainWindow):
         """Open the output folder in Windows Explorer"""
         try:
             # Get the AppData path for the application
-            app_data = os.path.join(os.getenv('APPDATA'), 'Cutting Optimizer Pro')
+            app_data = get_app_data_dir()
             
             # Create the directory if it doesn't exist
             os.makedirs(app_data, exist_ok=True)
